@@ -1,0 +1,9 @@
+# Verilator build output
+obj_dir/
+
+# macOS
+.DS_Store
+
+# Waveforms
+*.vcd
+*.fst
