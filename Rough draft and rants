@@ -1,1 +1,33 @@
 
+What does a 32 bit CPU need?
+
+32 general purpose register
+Intermediate Register
+32 bit compatible ALU
+Branch comparison logic unit, could be within ALU
+32 bit program counter
+Control Unit (multicycle version)
+Instruction memory/Data memory - might be together since multicycle
+instruction decoder
+Instruction set (This probably need to be a traditional one)
+flags
+Write back program
+
+
+Register file:
+
+traditional 32 bit architecture
+
+
+x0	zero	Hardwired zero	—
+x1	ra	Return address for subroutines	Caller
+x2	sp	Stack pointer	Callee
+x3	gp	Global pointer	—
+x4	tp	Thread pointer	—
+x5–x7	t0–t2	Temporary registers	Caller
+x8	s0 / fp	Saved register 0 / Frame pointer	Callee
+x9	s1	Saved register 1	Callee
+x10–x11	a0–a1	Function arguments / Return values	Caller
+x12–x17	a2–a7	Function arguments	Caller
+x18–x27	s2–s11	Saved registers	Callee
+x28–x31	t3–t6	Temporary registers	Caller
