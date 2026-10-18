@@ -1,9 +1,13 @@
-# Verilator build output
+*.fs
+*.json
+*.log
+
+# Verilator generated build files
 obj_dir/
+**/obj_dir/
 
-# macOS
-.DS_Store
-
-# Waveforms
-*.vcd
-*.fst
+# FPGA build outputs
+*.fs
+/cpu*.json
+/pnr.json
+/synth.log
