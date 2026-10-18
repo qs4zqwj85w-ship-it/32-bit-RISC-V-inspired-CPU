@@ -4,7 +4,11 @@ module CPU #(
 ) (
     input  logic        clk,
     input  logic        reset,
-    output logic [31:0] result
+
+    output logic [31:0] result,
+    output logic        uart_wr_en,
+    output logic [7:0]  uart_wr_data,
+    input  logic        uart_busy
 );
 
     // =====================================================
@@ -98,6 +102,26 @@ module CPU #(
 
     //memory fpga implementation
     logic mem_read_enable;
+
+        // ---- Memory-mapped I/O ----
+    localparam logic [31:0] UART_DATA_ADDR = 32'h1000_0000;
+    localparam logic [31:0] UART_STAT_ADDR = 32'h1000_0004;
+
+    logic        mmio_sel;
+    logic        ram_write_enable;
+    logic [31:0] ram_read_data;
+    logic        stat_sel_q = 1'b0;
+
+    assign mmio_sel         = (memory_address[31:28] == 4'h1);
+    assign ram_write_enable = mem_write_enable && !mmio_sel;
+    assign uart_wr_en       = mem_write_enable && (memory_address == UART_DATA_ADDR);
+    assign uart_wr_data     = operand_b[7:0];
+
+    always_ff @(posedge clk)
+        if (mem_read_enable)
+            stat_sel_q <= (memory_address == UART_STAT_ADDR);
+
+    assign memory_read_data = stat_sel_q ? {31'b0, uart_busy} : ram_read_data;
 
 
     // =====================================================
@@ -286,10 +310,10 @@ module CPU #(
         .address(memory_address),
         .write_data_in(operand_b),
         .read_enable(mem_read_enable),
-        .write_enable(mem_write_enable),
+        .write_enable(ram_write_enable),
         .access_size(access_size),
         .load_unsigned(load_unsigned),
-        .read_data_out(memory_read_data)
+        .read_data_out(ram_read_data)
     );
 
 

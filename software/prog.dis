@@ -1,0 +1,58 @@
+
+prog.elf:     file format elf32-littleriscv
+
+
+Disassembly of section .text:
+
+00000000 <_start>:
+   0:	00001117          	auipc	sp,0x1
+   4:	00010113          	mv	sp,sp
+   8:	00000097          	auipc	ra,0x0
+   c:	010080e7          	jalr	16(ra) # 18 <main>
+  10:	00050f93          	mv	t6,a0
+  14:	0000006f          	j	14 <_start+0x14>
+
+00000018 <main>:
+  18:	00000537          	lui	a0,0x0
+  1c:	10000837          	lui	a6,0x10000
+  20:	000006b7          	lui	a3,0x0
+  24:	000f4637          	lui	a2,0xf4
+  28:	00480713          	addi	a4,a6,4 # 10000004 <_stack_top+0xffff004>
+  2c:	0b368693          	addi	a3,a3,179 # b3 <main+0x9b>
+  30:	23f60613          	addi	a2,a2,575 # f423f <_stack_top+0xf323f>
+  34:	09850793          	addi	a5,a0,152 # 98 <main+0x80>
+  38:	0007c883          	lbu	a7,0(a5)
+  3c:	00178793          	addi	a5,a5,1
+  40:	00072583          	lw	a1,0(a4)
+  44:	0015f593          	andi	a1,a1,1
+  48:	fe059ce3          	bnez	a1,40 <main+0x28>
+  4c:	01182023          	sw	a7,0(a6)
+  50:	fed794e3          	bne	a5,a3,38 <main+0x20>
+  54:	ff010113          	addi	sp,sp,-16 # ff0 <main+0xfd8>
+  58:	0240006f          	j	7c <main+0x64>
+  5c:	09850793          	addi	a5,a0,152
+  60:	0007c883          	lbu	a7,0(a5)
+  64:	00178793          	addi	a5,a5,1
+  68:	00072583          	lw	a1,0(a4)
+  6c:	0015f593          	andi	a1,a1,1
+  70:	fe059ce3          	bnez	a1,68 <main+0x50>
+  74:	01182023          	sw	a7,0(a6)
+  78:	fed794e3          	bne	a5,a3,60 <main+0x48>
+  7c:	00012623          	sw	zero,12(sp)
+  80:	00c12783          	lw	a5,12(sp)
+  84:	fcf64ce3          	blt	a2,a5,5c <main+0x44>
+  88:	00c12783          	lw	a5,12(sp)
+  8c:	00178793          	addi	a5,a5,1
+  90:	00f12623          	sw	a5,12(sp)
+  94:	fedff06f          	j	80 <main+0x68>
+  98:	6548                	.insn	2, 0x6548
+  9a:	6c6c                	.insn	2, 0x6c6c
+  9c:	7266206f          	j	627c2 <_stack_top+0x617c2>
+  a0:	6d206d6f          	jal	s10,6772 <_stack_top+0x5772>
+  a4:	2079                	.insn	2, 0x2079
+  a6:	4952                	.insn	2, 0x4952
+  a8:	562d4353          	.insn	4, 0x562d4353
+  ac:	4320                	.insn	2, 0x4320
+  ae:	5550                	.insn	2, 0x5550
+  b0:	0d21                	.insn	2, 0x0d21
+  b2:	000a                	.insn	2, 0x000a

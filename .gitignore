@@ -10,4 +10,11 @@ obj_dir/
 *.fs
 /cpu*.json
 /pnr.json
-/synth.log
+.synth.log
+.c-build/.c-build/
+cpu.json
+pnr.json
+cpu.fs
+synth.log
+obj_dir/
+.DS_Store
