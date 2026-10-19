@@ -150,6 +150,7 @@ module CPU #(
     logic [31:0] mepc;
     logic [31:0] trap_cause;
     logic [31:0] trap_value;
+    logic csr_addr_read_only;
 
 
 
@@ -433,7 +434,16 @@ module CPU #(
 
     // Illegal instruction encoding or invalid CSR access.
     assign instruction_illegal =
-        illegal || (is_csr && !csr_addr_valid);
+        illegal ||
+        (is_csr &&
+            (!csr_addr_valid ||
+            (csr_write_requested && csr_addr_read_only)));
+
+    assign csr_write_enable_int =
+        csr_execute &&
+        csr_write_requested &&
+        csr_addr_valid &&
+        !csr_addr_read_only;
 
     control_fsm control_fsm_inst (
         .clk(clk),
@@ -494,16 +504,16 @@ module CPU #(
     // =====================================================
 
     // Select the exception cause.
-        assign trap_cause =
-            instruction_illegal ? 32'd2  :  // Illegal instruction
-            is_ecall           ? 32'd11 :  // ECALL from machine mode
-            is_ebreak           ? 32'd3  :  // Breakpoint
-                                32'd0;
+    assign trap_cause =
+        instruction_illegal ? 32'd2  :  // Illegal instruction
+        is_ecall           ? 32'd11 :  // ECALL from machine mode
+        is_ebreak           ? 32'd3  :  // Breakpoint
+                            32'd0;
 
-        // Save the instruction encoding for illegal-instruction traps.
-        // For ECALL and EBREAK, mtval will be zero.
-        assign trap_value =
-            instruction_illegal ? instruction_out : 32'd0;
+    // Save the instruction encoding for illegal-instruction traps.
+    // For ECALL and EBREAK, mtval will be zero.
+    assign trap_value =
+        instruction_illegal ? instruction_out : 32'd0;
     
 
     machine_csrs #(
@@ -526,7 +536,8 @@ module CPU #(
         .mret_execute(mret_execute),
 
         .mtvec_out(mtvec),
-        .mepc_out(mepc)
+        .mepc_out(mepc),
+        .csr_addr_read_only(csr_addr_read_only)
     );
 
 
@@ -608,15 +619,6 @@ module CPU #(
     end
 
     assign csr_addr = instruction_out[31:20];
-
-    assign csr_write_enable_int =
-        csr_execute &&
-        csr_write_requested &&
-        csr_addr_valid;
-
-    // Treat unimplemented CSR addresses as illegal instructions.
-    assign instruction_illegal =
-        illegal || (is_csr && !csr_addr_valid);
 
     always_ff @(posedge clk) begin
         if (reset)

@@ -188,6 +188,11 @@ always_comb begin
             if (is_ecall || is_ebreak) begin
                 next_state = TRAP;
             end
+
+            else if (illegal) begin
+                next_state = TRAP;
+            end
+
             else if (is_csr) begin
                 csr_execute = 1'b1;
                 next_state  = WRITEBACK;
@@ -196,10 +201,6 @@ always_comb begin
                 mret_execute = 1'b1;
                 pc_enable = 1'b1;
                 next_state = FETCH;
-            end
-
-            else if (illegal) begin
-                next_state = TRAP;
             end
 
             // R-type ALU instructions

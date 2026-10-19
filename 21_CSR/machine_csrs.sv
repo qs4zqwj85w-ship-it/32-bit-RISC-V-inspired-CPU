@@ -21,7 +21,8 @@ module machine_csrs #(
 
     // Outputs for CPU control
     output logic [31:0] mtvec_out,
-    output logic [31:0] mepc_out
+    output logic [31:0] mepc_out,
+    output logic csr_addr_read_only
 );
 
     localparam logic [11:0] CSR_MSTATUS = 12'h300;
@@ -29,16 +30,19 @@ module machine_csrs #(
     localparam logic [11:0] CSR_MEPC   = 12'h341;
     localparam logic [11:0] CSR_MCAUSE = 12'h342;
     localparam logic [11:0] CSR_MTVAL = 12'h343;
+    localparam logic [11:0] CSR_MISA     = 12'h301;
+    localparam logic [11:0] CSR_MSCRATCH = 12'h340;
+    localparam logic [11:0] CSR_MHARTID  = 12'hF14;
+
+    // RV32, I extension supported; M is added after RV32M is implemented.
+    localparam logic [31:0] MISA_VALUE = 32'h4000_0100;
 
 
     logic [31:0] mtvec_q;
     logic [31:0] mepc_q;
     logic [31:0] mcause_q;
     logic [31:0] mtval_q;
-
-    // NOTE: This CPU currently implements machine mode only.
-    // MPP therefore reads as 2'b11; other unimplemented
-    // mstatus bits read as zero.
+    logic [31:0] mscratch_q;
     logic mstatus_mie_q;
     logic mstatus_mpie_q;
     logic [31:0] mstatus_read;
@@ -51,28 +55,56 @@ module machine_csrs #(
     // =====================================================
 
     always_comb begin
-        mstatus_read = 32'd0;
-        mstatus_read[3]     = mstatus_mie_q;   // MIE
-        mstatus_read[7]     = mstatus_mpie_q;  // MPIE
-        mstatus_read[12:11] = 2'b11;           // MPP = M
+    mstatus_read = 32'd0;
+    mstatus_read[3]     = mstatus_mie_q;   // MIE
+    mstatus_read[7]     = mstatus_mpie_q;  // MPIE
+    mstatus_read[12:11] = 2'b11;           // MPP = M
 
-        csr_addr_valid = 1'b1;
-        csr_read_data  = 32'd0;
+    // Defaults for combinational outputs
+    csr_addr_valid     = 1'b1;
+    csr_addr_read_only = 1'b0;
+    csr_read_data      = 32'd0;
 
-        case (csr_addr)
-            CSR_MSTATUS: csr_read_data = mstatus_read;
-            CSR_MTVEC:   csr_read_data = mtvec_q;
-            CSR_MEPC:    csr_read_data = mepc_q;
-            CSR_MCAUSE:  csr_read_data = mcause_q;
-            CSR_MTVAL: csr_read_data = mtval_q;
+    case (csr_addr)
+        CSR_MSTATUS: begin
+            csr_read_data = mstatus_read;
+        end
 
-            default: begin
-                csr_addr_valid = 1'b0;
-                csr_read_data  = 32'd0;
-            end
-        endcase
-    end
+        CSR_MTVEC: begin
+            csr_read_data = mtvec_q;
+        end
 
+        CSR_MEPC: begin
+            csr_read_data = mepc_q;
+        end
+
+        CSR_MCAUSE: begin
+            csr_read_data = mcause_q;
+        end
+
+        CSR_MTVAL: begin
+            csr_read_data = mtval_q;
+        end
+
+        CSR_MSCRATCH: begin
+            csr_read_data = mscratch_q;
+        end
+
+        CSR_MISA: begin
+            csr_read_data = MISA_VALUE;
+        end
+
+        CSR_MHARTID: begin
+            csr_read_data      = 32'd0;
+            csr_addr_read_only = 1'b1;
+        end
+
+        default: begin
+            csr_addr_valid = 1'b0;
+            csr_read_data  = 32'd0;
+        end
+    endcase
+end
     // =====================================================
     // CSR writes and trap-entry updates
     // =====================================================
@@ -85,6 +117,7 @@ module machine_csrs #(
             mstatus_mie_q   <= 1'b0;
             mstatus_mpie_q  <= 1'b0;
             mtval_q         <= 32'd0;
+            mscratch_q <= 32'd0;
         end
         else if (trap_enter) begin
             // Save the instruction that raised the exception.
@@ -126,8 +159,19 @@ module machine_csrs #(
                     mtval_q <= csr_write_data;
                 end
 
+                CSR_MSCRATCH: begin
+                    mscratch_q <= csr_write_data;
+                end
+
+                CSR_MISA: begin
+                    // Fixed WARL value. Writes have no effect.
+                end
+
+                CSR_MHARTID: begin
+                    // Read-only. The CPU should reject write attempts.
+                end
+
                 default: begin
-                    // No write for unsupported addresses.
                 end
             endcase
         end
