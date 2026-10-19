@@ -15,6 +15,7 @@ module machine_csrs #(
     input  logic        trap_enter,
     input  logic [31:0] trap_pc,
     input  logic [31:0] trap_cause,
+    input logic [31:0] trap_value,
 
     input logic mret_execute,
 
@@ -27,10 +28,13 @@ module machine_csrs #(
     localparam logic [11:0] CSR_MTVEC  = 12'h305;
     localparam logic [11:0] CSR_MEPC   = 12'h341;
     localparam logic [11:0] CSR_MCAUSE = 12'h342;
+    localparam logic [11:0] CSR_MTVAL = 12'h343;
+
 
     logic [31:0] mtvec_q;
     logic [31:0] mepc_q;
     logic [31:0] mcause_q;
+    logic [31:0] mtval_q;
 
     // NOTE: This CPU currently implements machine mode only.
     // MPP therefore reads as 2'b11; other unimplemented
@@ -60,6 +64,7 @@ module machine_csrs #(
             CSR_MTVEC:   csr_read_data = mtvec_q;
             CSR_MEPC:    csr_read_data = mepc_q;
             CSR_MCAUSE:  csr_read_data = mcause_q;
+            CSR_MTVAL: csr_read_data = mtval_q;
 
             default: begin
                 csr_addr_valid = 1'b0;
@@ -79,11 +84,13 @@ module machine_csrs #(
             mcause_q        <= 32'd0;
             mstatus_mie_q   <= 1'b0;
             mstatus_mpie_q  <= 1'b0;
+            mtval_q         <= 32'd0;
         end
         else if (trap_enter) begin
             // Save the instruction that raised the exception.
             mepc_q   <= {trap_pc[31:2], 2'b00};
             mcause_q <= trap_cause;
+            mtval_q <= trap_value;
 
             // Machine-mode trap entry: MPIE <- MIE; MIE <- 0.
             mstatus_mpie_q <= mstatus_mie_q;
@@ -114,6 +121,9 @@ module machine_csrs #(
 
                 CSR_MCAUSE: begin
                     mcause_q <= csr_write_data;
+                end
+                CSR_MTVAL: begin
+                    mtval_q <= csr_write_data;
                 end
 
                 default: begin

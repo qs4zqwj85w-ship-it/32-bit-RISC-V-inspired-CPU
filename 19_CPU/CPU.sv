@@ -149,6 +149,7 @@ module CPU #(
     logic [31:0] mtvec;
     logic [31:0] mepc;
     logic [31:0] trap_cause;
+    logic [31:0] trap_value;
 
 
 
@@ -430,6 +431,10 @@ module CPU #(
     // 17. Multicycle Control FSM
     // =====================================================
 
+    // Illegal instruction encoding or invalid CSR access.
+    assign instruction_illegal =
+        illegal || (is_csr && !csr_addr_valid);
+
     control_fsm control_fsm_inst (
         .clk(clk),
         .rst(reset),
@@ -488,7 +493,18 @@ module CPU #(
     // 18. CSR instance
     // =====================================================
 
-    assign trap_cause = is_ecall ? 32'd11 : 32'd3;
+    // Select the exception cause.
+        assign trap_cause =
+            instruction_illegal ? 32'd2  :  // Illegal instruction
+            is_ecall           ? 32'd11 :  // ECALL from machine mode
+            is_ebreak           ? 32'd3  :  // Breakpoint
+                                32'd0;
+
+        // Save the instruction encoding for illegal-instruction traps.
+        // For ECALL and EBREAK, mtval will be zero.
+        assign trap_value =
+            instruction_illegal ? instruction_out : 32'd0;
+    
 
     machine_csrs #(
         .RESET_MTVEC(RESET_MTVEC)
@@ -496,7 +512,7 @@ module CPU #(
         .clk(clk),
         .reset(reset),
 
-        .csr_addr(instruction_out[31:20]),
+        .csr_addr(csr_addr),
         .csr_write_enable(csr_write_enable_int),
         .csr_write_data(csr_write_data),
         .csr_read_data(csr_read_data),
@@ -505,11 +521,12 @@ module CPU #(
         .trap_enter(trap_enter),
         .trap_pc(mar_out),
         .trap_cause(trap_cause),
+        .trap_value(trap_value),
+
         .mret_execute(mret_execute),
 
         .mtvec_out(mtvec),
         .mepc_out(mepc)
-        
     );
 
 

@@ -62,7 +62,8 @@ module control_fsm (
 
     // CSR execution outoput
     output logic csr_execute,
-    output logic mret_execute
+    output logic mret_execute,
+
 );
 
 // State encodings
@@ -198,8 +199,7 @@ always_comb begin
             end
 
             else if (illegal) begin
-                // Existing behavior for unsupported instructions.
-                next_state = FETCH;
+                next_state = TRAP;
             end
 
             // R-type ALU instructions
