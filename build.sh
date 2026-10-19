@@ -30,7 +30,8 @@ FILES="$(printf '%s ' \
   './07_instruction_register/instruction_reg.sv' \
   './18_control_fsm/control_fsm.sv' \
   './10_MAR/mar.sv' \
-  './13_branch_control/branch_control.sv'
+  './13_branch_control/branch_control.sv' \
+  './21_CSR/machine_csrs.sv' \
 )"
 
 

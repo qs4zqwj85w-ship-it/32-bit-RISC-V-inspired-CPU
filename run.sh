@@ -110,22 +110,22 @@ echo
 echo "=== 2/4: Compile C, assemble, and link for RV32I ==="
 
 riscv64-elf-gcc \
-    -march=rv32i -mabi=ilp32 \
+    -march=rv32i_zicsr -mabi=ilp32 \
     -O0 -ffreestanding -fno-builtin \
     -fno-pic -fno-pie -msmall-data-limit=0 \
     -fno-asynchronous-unwind-tables -fno-unwind-tables \
     -S "$SRC" -o "$OUT/main.s"
 
 riscv64-elf-as \
-    -march=rv32i -mabi=ilp32 \
+    -march=rv32i_zicsr -mabi=ilp32 \
     -o "$OUT/start.o" "$OUT/start.S"
 
 riscv64-elf-as \
-    -march=rv32i -mabi=ilp32 \
+    -march=rv32i_zicsr -mabi=ilp32 \
     -o "$OUT/main.o" "$OUT/main.s"
 
 riscv64-elf-gcc \
-    -march=rv32i -mabi=ilp32 \
+    -march=rv32i_zicsr -mabi=ilp32 \
     -nostdlib -nostartfiles \
     -fno-pic -fno-pie \
     -Wl,-T,"$OUT/linker.ld" \
@@ -185,7 +185,7 @@ print(f"Wrote {len(words)} 32-bit words to {hex_path.name}")
 PY
 
 echo
-echo "=== 4/4: Build FPGA bitstream ==="
+echo "=== 4/4: Build FPGA bitstream and flash board ==="
 
 bash "$ROOT/build.sh"
 
@@ -194,4 +194,17 @@ bash "$ROOT/build.sh"
 
 
 
-echo "SUCCESS: C program built and FPGA programming command completed."
+
+echo "SUCCESS: C program built and board flashed."
+
+# Open the serial monitor on the board's UART port.
+PORT="${UART_PORT:-}"
+if [[ -z "$PORT" ]]; then
+    sleep 2   # let the USB-serial ports re-appear after flashing
+    PORT="$(ls /dev/cu.usbserial-* 2>/dev/null | tail -n 1 || true)"
+fi
+[[ -n "$PORT" ]] || die "No /dev/cu.usbserial-* port found."
+
+killall screen 2>/dev/null || true
+echo "Opening $PORT at 115200 (exit: Ctrl-A, then K, then Y)"
+exec screen "$PORT" 115200

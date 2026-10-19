@@ -22,7 +22,13 @@ module decoder (
 
     // Additional decode information
     output logic writes_rd,
-    output logic illegal
+    output logic illegal,
+    //ENVIRONMENTAL instructions
+    output logic is_ecall,
+    output logic is_ebreak,
+    // CSR instructions
+    output logic is_csr,
+    output logic is_mret
 );
 
     logic [6:0] opcode;
@@ -54,6 +60,11 @@ module decoder (
 
         writes_rd  = 1'b0;
         illegal    = 1'b1;
+        is_ecall  = 1'b0;
+        is_ebreak = 1'b0;
+
+        is_csr = 1'b0;
+        is_mret = 1'b0;
 
         case (opcode)
 
@@ -202,11 +213,61 @@ module decoder (
                 writes_rd = 1'b1;
                 illegal   = 1'b0;
             end
-
-            // SYSTEM instructions are not implemented yet
+            
+            //Environmental instructions (ECALL, EBREAK, CSR)
             7'b1110011: begin
-                illegal = 1'b1;
+                case (instr)
+                    32'h0000_0073: begin
+                        // ECALL
+                        is_ecall = 1'b1;
+                        illegal  = 1'b0;
+                    end
+
+                    32'h0010_0073: begin
+                        // EBREAK
+                        is_ebreak = 1'b1;
+                        illegal   = 1'b0;
+                    end
+
+                    32'h3020_0073: begin
+                        // MRET
+                        is_mret = 1'b1;
+                        illegal = 1'b0;
+                    end
+
+                    default: begin
+                        case (funct3)
+                            3'b001, // CSRRW
+                            3'b010, // CSRRS
+                            3'b011, // CSRRC
+                            3'b101, // CSRRWI
+                            3'b110, // CSRRSI
+                            3'b111: begin // CSRRCI
+                                is_csr  = 1'b1;
+                                writes_rd = 1'b1;
+                                illegal = 1'b0;
+                            end
+
+                            default: begin
+                                // Unsupported SYSTEM instruction.
+                                illegal = 1'b1;
+                            end
+                        endcase
+                    end
+                endcase
             end
+
+            // MISC-MEM: FENCE
+            7'b0001111: begin
+                // Base FENCE: in-order implementation, so no extra
+                // ordering operation is needed. Reject reserved FM values.
+                if ((funct3 == 3'b000) &&
+                    (instr[31:28] == 4'b0000)) begin
+                    illegal = 1'b0;
+                end else begin
+                    illegal = 1'b1;
+                end
+            end     
 
             default: begin
                 // Keep defaults: unsupported opcode, this might be a lil too hard, might do it later :|

@@ -17,6 +17,15 @@ module control_fsm (
     input logic branch_taken,
     input logic [3:0] decoded_alu_op,
 
+    //Environmental instructions
+    input logic is_ecall,
+    input logic is_ebreak,
+
+    // CSR instructions
+    input  logic is_csr,
+    input logic is_mret,
+
+
     // PC and instruction fetch
     output logic pc_enable,
     output logic pc_source_sel,
@@ -46,7 +55,14 @@ module control_fsm (
     output logic [1:0] wb_sel,
 
     // JALR target mask
-    output logic jalr_target_mask
+    output logic jalr_target_mask,
+
+    // environmental trap
+    output logic trap_enter,
+
+    // CSR execution outoput
+    output logic csr_execute,
+    output logic mret_execute
 );
 
 // State encodings
@@ -58,8 +74,12 @@ localparam logic [2:0] WRITEBACK   = 3'b101;
 localparam logic [2:0] FETCH_WAIT  = 3'b110;
 localparam logic [2:0] MEMORY_WAIT = 3'b111;
 
+localparam logic [2:0] TRAP = 3'b000;
+
 logic [2:0] state;
 logic [2:0] next_state;
+
+
 
 // State register
 always_ff @(posedge clk) begin
@@ -99,6 +119,11 @@ always_comb begin
     wb_sel = 2'b00;
 
     jalr_target_mask = 1'b0;
+
+    trap_enter = 1'b0;
+
+    csr_execute = 1'b0;
+    mret_execute = 1'b0;
 
     case (state)
 
@@ -159,7 +184,21 @@ always_comb begin
         // EXECUTE
         // -----------------------------------------
         EXECUTE: begin
-            if (illegal) begin
+            if (is_ecall || is_ebreak) begin
+                next_state = TRAP;
+            end
+            else if (is_csr) begin
+                csr_execute = 1'b1;
+                next_state  = WRITEBACK;
+            end
+            else if (is_mret) begin
+                mret_execute = 1'b1;
+                pc_enable = 1'b1;
+                next_state = FETCH;
+            end
+
+            else if (illegal) begin
+                // Existing behavior for unsupported instructions.
                 next_state = FETCH;
             end
 
@@ -361,6 +400,13 @@ always_comb begin
             next_state = FETCH;
         end
 
+        TRAP: begin
+            // Save exception state and redirect the PC on this clock edge.
+            trap_enter = 1'b1;
+            pc_enable  = 1'b1;
+            next_state = FETCH;
+        end
+        
     endcase
 end
 

@@ -1,6 +1,7 @@
 
 module CPU #(
-    parameter INIT_FILE = "program.hex"
+    parameter INIT_FILE = "program.hex",
+    parameter logic [31:0] RESET_MTVEC = 32'h0000_0100
 ) (
     input  logic        clk,
     input  logic        reset,
@@ -95,15 +96,28 @@ module CPU #(
     // Branch control
     logic        branch_taken;
 
+    //Environmental command
+    logic is_ecall;
+    logic is_ebreak;
+    logic trap_enter;
+
+    logic [31:0] mtvec;
+
+    /* verilator lint_off UNUSEDSIGNAL */
+    logic [31:0] mepc;
+    logic [31:0] mcause;
+    /* verilator lint_on UNUSEDSIGNAL */
+
     // Register writeback
     logic        reg_write_enable;
     logic [1:0]  wb_sel;
     logic [31:0] writeback_data;
 
+
     //memory fpga implementation
     logic mem_read_enable;
 
-        // ---- Memory-mapped I/O ----
+    // ---- Memory-mapped I/O ----
     localparam logic [31:0] UART_DATA_ADDR = 32'h1000_0000;
     localparam logic [31:0] UART_STAT_ADDR = 32'h1000_0004;
 
@@ -111,6 +125,33 @@ module CPU #(
     logic        ram_write_enable;
     logic [31:0] ram_read_data;
     logic        stat_sel_q = 1'b0;
+
+    // CSR execution logic
+    logic        is_csr;
+    logic        csr_execute;
+
+    logic [11:0] csr_addr;
+    logic        csr_addr_valid;
+    logic        csr_write_requested;
+    logic        csr_write_enable_int;
+
+    logic [31:0] csr_read_data;
+    logic [31:0] csr_write_data;
+    logic [31:0] csr_source_value;
+    logic [31:0] csr_old_value;
+
+    logic [31:0] normal_writeback_data;
+    logic        instruction_illegal;
+
+    logic is_mret;
+    logic mret_execute; 
+
+    logic [31:0] mtvec;
+    logic [31:0] mepc;
+    logic [31:0] trap_cause;
+
+
+
 
     assign mmio_sel         = (memory_address[31:28] == 4'h1);
     assign ram_write_enable = mem_write_enable && !mmio_sel;
@@ -173,8 +214,13 @@ module CPU #(
         .is_lui(is_lui),
         .is_auipc(is_auipc),
 
+        .is_ecall(is_ecall),
+        .is_ebreak(is_ebreak),
+
         .writes_rd(writes_rd),
-        .illegal(illegal)
+        .illegal(illegal),
+        .is_csr(is_csr),
+        .is_mret(is_mret)
     );
 
 
@@ -346,6 +392,9 @@ module CPU #(
     // 15. Next-PC Mux
     // =====================================================
 
+    // JALR targets must have bit 0 cleared. For some reason i am not sure of.
+    // Trap redirection takes priority over normal PC selection and JALR.
+
     next_pc_mux next_pc_mux_inst (
         .alu_result(alu_result),
         .alu_out_reg_out(alu_out_reg_out),
@@ -353,23 +402,27 @@ module CPU #(
         .next_pc(selected_next_pc)
     );
 
-    // JALR targets must have bit 0 cleared. For some reason i am not sure of.
-    assign pc_input = jalr_target_mask
-                    ? {selected_next_pc[31:1], 1'b0}
-                    : selected_next_pc;
+    assign pc_input = trap_enter
+                    ? mtvec
+                    : mret_execute
+                        ? mepc
+                        : jalr_target_mask
+                            ? {selected_next_pc[31:1], 1'b0}
+                            : selected_next_pc;
 
-
-    // =====================================================
+   // =====================================================
     // 16. Register Writeback Mux
     // =====================================================
 
+    assign writeback_data =
+        is_csr ? csr_old_value : normal_writeback_data;
     memory_writeback_mux writeback_mux_inst (
         .alu_out_reg_out(alu_out_reg_out),
         .mdr_out(mdr_out),
         .pc_out(pc_out),
         .immediate(immediate),
         .wb_sel(wb_sel),
-        .writeback_data(writeback_data)
+        .writeback_data(normal_writeback_data)
     );
 
 
@@ -390,7 +443,7 @@ module CPU #(
         .is_lui(is_lui),
         .is_auipc(is_auipc),
         .writes_rd(writes_rd),
-        .illegal(illegal),
+        .illegal(instruction_illegal),
 
         .branch_taken(branch_taken),
         .decoded_alu_op(decoded_alu_op),
@@ -411,6 +464,10 @@ module CPU #(
         .alu_b_sel(alu_b_sel),
         .alu_ctrl(alu_ctrl),
 
+        .is_ecall(is_ecall),
+        .is_ebreak(is_ebreak),
+        .trap_enter(trap_enter),
+
         .mdr_write_enable(mdr_write_enable),
         .alu_out_reg_write_enable(alu_out_reg_write_enable),
         .op_AB_reg_write_enable(op_AB_reg_write_enable),
@@ -418,12 +475,46 @@ module CPU #(
         .reg_write_enable(reg_write_enable),
         .wb_sel(wb_sel),
 
-        .mem_read_enable(mem_read_enable)
+        .mem_read_enable(mem_read_enable),
+
+        .is_csr(is_csr),
+        .csr_execute(csr_execute),
+
+        .is_mret(is_mret),
+        .mret_execute(mret_execute)
+    );
+
+    // =====================================================
+    // 18. CSR instance
+    // =====================================================
+
+    assign trap_cause = is_ecall ? 32'd11 : 32'd3;
+
+    machine_csrs #(
+        .RESET_MTVEC(RESET_MTVEC)
+    ) csr_bank_inst (
+        .clk(clk),
+        .reset(reset),
+
+        .csr_addr(instruction_out[31:20]),
+        .csr_write_enable(csr_write_enable_int),
+        .csr_write_data(csr_write_data),
+        .csr_read_data(csr_read_data),
+        .csr_addr_valid(csr_addr_valid),
+
+        .trap_enter(trap_enter),
+        .trap_pc(mar_out),
+        .trap_cause(trap_cause),
+        .mret_execute(mret_execute),
+
+        .mtvec_out(mtvec),
+        .mepc_out(mepc)
+        
     );
 
 
     // =====================================================
-    // 18. Debug Result Monitor
+    // 19. Debug Result Monitor
     // =====================================================
 
     // Records the last value written to a nonzero
@@ -434,5 +525,89 @@ module CPU #(
         else if (reg_write_enable && (rd != 5'd0))
             result <= writeback_data;
     end
+
+    always_comb begin
+        // funct3[2] distinguishes immediate CSR instructions.
+        // Immediate source is a zero-extended zimm[4:0].
+        if (instruction_out[14]) begin
+            csr_source_value = {
+                27'd0, instruction_out[19:15]
+            };
+        end
+        else begin
+            csr_source_value = operand_a;
+        end
+
+        // Default: preserve the old CSR value.
+        csr_write_data      = csr_read_data;
+        csr_write_requested = 1'b0;
+
+        case (instruction_out[14:12])
+            3'b001: begin // CSRRW
+                csr_write_data      = csr_source_value;
+                csr_write_requested = 1'b1;
+            end
+
+            3'b010: begin // CSRRS
+                csr_write_data = csr_read_data | csr_source_value;
+
+                // Suppress writes only when encoded rs1 = x0.
+                csr_write_requested =
+                    (instruction_out[19:15] != 5'd0);
+            end
+
+            3'b011: begin // CSRRC
+                csr_write_data =
+                    csr_read_data & ~csr_source_value;
+
+                csr_write_requested =
+                    (instruction_out[19:15] != 5'd0);
+            end
+
+            3'b101: begin // CSRRWI
+                csr_write_data      = csr_source_value;
+                csr_write_requested = 1'b1;
+            end
+
+            3'b110: begin // CSRRSI
+                csr_write_data = csr_read_data | csr_source_value;
+                csr_write_requested =
+                    (instruction_out[19:15] != 5'd0);
+            end
+
+            3'b111: begin // CSRRCI
+                csr_write_data =
+                    csr_read_data & ~csr_source_value;
+
+                csr_write_requested =
+                    (instruction_out[19:15] != 5'd0);
+            end
+
+            default: begin
+                csr_write_data      = csr_read_data;
+                csr_write_requested = 1'b0;
+            end
+        endcase
+    end
+
+    assign csr_addr = instruction_out[31:20];
+
+    assign csr_write_enable_int =
+        csr_execute &&
+        csr_write_requested &&
+        csr_addr_valid;
+
+    // Treat unimplemented CSR addresses as illegal instructions.
+    assign instruction_illegal =
+        illegal || (is_csr && !csr_addr_valid);
+
+    always_ff @(posedge clk) begin
+        if (reset)
+            csr_old_value <= 32'd0;
+        else if (csr_execute && csr_addr_valid)
+            csr_old_value <= csr_read_data;
+    end
+
+
 
 endmodule
