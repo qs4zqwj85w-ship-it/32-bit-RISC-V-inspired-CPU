@@ -4,268 +4,62 @@
 	.attribute unaligned_access, 0
 	.attribute stack_align, 16
 	.text
-	.align	2
-	.type	delay, @function
-delay:
-	addi	sp,sp,-32
-	sw	ra,28(sp)
-	sw	s0,24(sp)
-	addi	s0,sp,32
-	sw	zero,-20(s0)
-	j	.L2
-.L3:
-	lw	a5,-20(s0)
-	addi	a5,a5,1
-	sw	a5,-20(s0)
-.L2:
-	lw	a4,-20(s0)
-	li	a5,5001216
-	addi	a5,a5,-1217
-	bleu	a4,a5,.L3
-	nop
-	nop
-	lw	ra,28(sp)
-	lw	s0,24(sp)
-	addi	sp,sp,32
-	jr	ra
-	.size	delay, .-delay
-	.align	2
-	.type	uart_putc, @function
-uart_putc:
-	addi	sp,sp,-32
-	sw	ra,28(sp)
-	sw	s0,24(sp)
-	addi	s0,sp,32
-	mv	a5,a0
-	sb	a5,-17(s0)
-	nop
-.L5:
-	li	a5,268435456
-	addi	a5,a5,4
-	lw	a5,0(a5)
-	andi	a5,a5,1
-	bne	a5,zero,.L5
-	li	a5,268435456
-	lbu	a4,-17(s0)
-	sb	a4,0(a5)
-	nop
-	lw	ra,28(sp)
-	lw	s0,24(sp)
-	addi	sp,sp,32
-	jr	ra
-	.size	uart_putc, .-uart_putc
-	.align	2
-	.type	uart_puts, @function
-uart_puts:
-	addi	sp,sp,-32
-	sw	ra,28(sp)
-	sw	s0,24(sp)
-	addi	s0,sp,32
-	sw	a0,-20(s0)
-	j	.L7
-.L8:
-	lw	a5,-20(s0)
-	addi	a4,a5,1
-	sw	a4,-20(s0)
-	lbu	a5,0(a5)
-	mv	a0,a5
-	call	uart_putc
-.L7:
-	lw	a5,-20(s0)
-	lbu	a5,0(a5)
-	bne	a5,zero,.L8
-	nop
-	nop
-	lw	ra,28(sp)
-	lw	s0,24(sp)
-	addi	sp,sp,32
-	jr	ra
-	.size	uart_puts, .-uart_puts
-	.align	2
-	.type	put_hex, @function
-put_hex:
-	addi	sp,sp,-48
-	sw	ra,44(sp)
-	sw	s0,40(sp)
-	addi	s0,sp,48
-	sw	a0,-36(s0)
-	li	a5,28
-	sw	a5,-20(s0)
-	j	.L10
-.L13:
-	lw	a5,-20(s0)
-	lw	a4,-36(s0)
-	srl	a5,a4,a5
-	andi	a5,a5,15
-	sw	a5,-24(s0)
-	lw	a4,-24(s0)
-	li	a5,9
-	bgtu	a4,a5,.L11
-	lw	a5,-24(s0)
-	andi	a5,a5,0xff
-	addi	a5,a5,48
-	andi	a5,a5,0xff
-	j	.L12
-.L11:
-	lw	a5,-24(s0)
-	andi	a5,a5,0xff
-	addi	a5,a5,55
-	andi	a5,a5,0xff
-.L12:
-	mv	a0,a5
-	call	uart_putc
-	lw	a5,-20(s0)
-	addi	a5,a5,-4
-	sw	a5,-20(s0)
-.L10:
-	lw	a5,-20(s0)
-	bge	a5,zero,.L13
-	nop
-	nop
-	lw	ra,44(sp)
-	lw	s0,40(sp)
-	addi	sp,sp,48
-	jr	ra
-	.size	put_hex, .-put_hex
-	.align	2
-	.type	put_dec2, @function
-put_dec2:
-	addi	sp,sp,-48
-	sw	ra,44(sp)
-	sw	s0,40(sp)
-	addi	s0,sp,48
-	sw	a0,-36(s0)
-	li	a5,48
-	sb	a5,-17(s0)
-	j	.L15
-.L16:
-	lw	a5,-36(s0)
-	addi	a5,a5,-10
-	sw	a5,-36(s0)
-	lbu	a5,-17(s0)
-	addi	a5,a5,1
-	sb	a5,-17(s0)
-.L15:
-	lw	a4,-36(s0)
-	li	a5,9
-	bgtu	a4,a5,.L16
-	lbu	a5,-17(s0)
-	mv	a0,a5
-	call	uart_putc
-	lw	a5,-36(s0)
-	andi	a5,a5,0xff
-	addi	a5,a5,48
-	andi	a5,a5,0xff
-	mv	a0,a5
-	call	uart_putc
-	nop
-	lw	ra,44(sp)
-	lw	s0,40(sp)
-	addi	sp,sp,48
-	jr	ra
-	.size	put_dec2, .-put_dec2
 	.globl	last_cause
-	.data
+	.bss
 	.align	2
 	.type	last_cause, @object
 	.size	last_cause, 4
 last_cause:
-	.word	-1
-	.globl	last_tval
-	.align	2
-	.type	last_tval, @object
-	.size	last_tval, 4
-last_tval:
-	.word	-1
-	.globl	trap_count
-	.bss
-	.align	2
-	.type	trap_count, @object
-	.size	trap_count, 4
-trap_count:
 	.zero	4
-	.local	total
-	.comm	total,4,4
-	.local	fails
-	.comm	fails,4,4
-	.section	.rodata
-	.align	2
-.LC0:
-	.string	"FAIL "
-	.align	2
-.LC1:
-	.string	" got "
-	.align	2
-.LC2:
-	.string	" want "
-	.align	2
-.LC3:
-	.string	"\r\n"
 	.text
 	.align	2
-	.type	check, @function
-check:
-	addi	sp,sp,-32
-	sw	ra,28(sp)
-	sw	s0,24(sp)
-	addi	s0,sp,32
-	sw	a0,-20(s0)
-	sw	a1,-24(s0)
-	sw	a2,-28(s0)
-	lui	a5,%hi(total)
-	lw	a5,%lo(total)(a5)
-	addi	a4,a5,1
-	lui	a5,%hi(total)
-	sw	a4,%lo(total)(a5)
-	lw	a4,-24(s0)
-	lw	a5,-28(s0)
-	beq	a4,a5,.L19
-	lui	a5,%hi(fails)
-	lw	a5,%lo(fails)(a5)
-	addi	a4,a5,1
-	lui	a5,%hi(fails)
-	sw	a4,%lo(fails)(a5)
-	lui	a5,%hi(.LC0)
-	addi	a0,a5,%lo(.LC0)
-	call	uart_puts
-	lw	a0,-20(s0)
-	call	uart_puts
-	lui	a5,%hi(.LC1)
-	addi	a0,a5,%lo(.LC1)
-	call	uart_puts
-	lw	a0,-24(s0)
-	call	put_hex
-	lui	a5,%hi(.LC2)
-	addi	a0,a5,%lo(.LC2)
-	call	uart_puts
-	lw	a0,-28(s0)
-	call	put_hex
-	lui	a5,%hi(.LC3)
-	addi	a0,a5,%lo(.LC3)
-	call	uart_puts
-.L19:
-	nop
-	lw	ra,28(sp)
-	lw	s0,24(sp)
-	addi	sp,sp,32
+	.type	uart_putc, @function
+uart_putc:
+	li	a4,268435456
+	addi	a4,a4,4
+.L2:
+	lw	a5,0(a4)
+	andi	a5,a5,1
+	bne	a5,zero,.L2
+	li	a5,268435456
+	sb	a0,0(a5)
+	ret
+	.size	uart_putc, .-uart_putc
+	.align	2
+	.type	spin, @function
+spin:
+	addi	sp,sp,-16
+	sw	zero,12(sp)
+.L5:
+	lw	a5,12(sp)
+	bltu	a5,a0,.L6
+	addi	sp,sp,16
 	jr	ra
-	.size	check, .-check
+.L6:
+	lw	a5,12(sp)
+	addi	a5,a5,1
+	sw	a5,12(sp)
+	j	.L5
+	.size	spin, .-spin
+	.align	2
+	.type	read_misa, @function
+read_misa:
+ #APP
+# 73 "/Users/brianhsieh/Desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
+	csrr a0, misa
+# 0 "" 2
+ #NO_APP
+	ret
+	.size	read_misa, .-read_misa
 	.section	.text,"ax",@progbits
 	.align	2
 	.globl	trap_handler
 	.type	trap_handler, @function
 trap_handler:
  #APP
-# 50 "/Users/brianhsieh/desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
+# 79 "/Users/brianhsieh/Desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
 	csrr t0, mcause
 la   t1, last_cause
-sw   t0, 0(t1)
-csrr t0, mtval
-la   t1, last_tval
-sw   t0, 0(t1)
-la   t1, trap_count
-lw   t0, 0(t1)
-addi t0, t0, 1
 sw   t0, 0(t1)
 csrr t0, mepc
 addi t0, t0, 4
@@ -274,597 +68,797 @@ mret
 
 # 0 "" 2
  #NO_APP
-	nop
 	.size	trap_handler, .-trap_handler
 	.text
 	.align	2
-	.type	scratch_roundtrip, @function
-scratch_roundtrip:
-	addi	sp,sp,-48
-	sw	ra,44(sp)
-	sw	s0,40(sp)
-	addi	s0,sp,48
-	sw	a0,-36(s0)
-	sw	a1,-40(s0)
-	lw	a4,-40(s0)
- #APP
-# 71 "/Users/brianhsieh/desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
-	csrw mscratch, a4
-	csrr a5, mscratch
-# 0 "" 2
- #NO_APP
-	sw	a5,-20(s0)
-	lw	a2,-40(s0)
-	lw	a1,-20(s0)
-	lw	a0,-36(s0)
-	call	check
-	nop
-	lw	ra,44(sp)
-	lw	s0,40(sp)
-	addi	sp,sp,48
-	jr	ra
-	.size	scratch_roundtrip, .-scratch_roundtrip
-	.section	.rodata
-	.align	2
-.LC4:
-	.string	"misa MXL is RV32"
-	.align	2
-.LC5:
-	.string	"misa has I"
-	.align	2
-.LC6:
-	.string	"misa write ignored"
-	.align	2
-.LC7:
-	.string	"mhartid is 0"
-	.align	2
-.LC8:
-	.string	"mscratch DEADBEEF"
-	.align	2
-.LC9:
-	.string	"mscratch 0"
-	.align	2
-.LC10:
-	.string	"mscratch FFFFFFFF"
-	.align	2
-.LC11:
-	.string	"mscratch A5A5A5A5"
-	.align	2
-.LC12:
-	.string	"csrrw old"
-	.align	2
-.LC13:
-	.string	"csrrw new"
-	.align	2
-.LC14:
-	.string	"csrrs old"
-	.align	2
-.LC15:
-	.string	"csrrs new"
-	.align	2
-.LC16:
-	.string	"csrrc old"
-	.align	2
-.LC17:
-	.string	"csrrc new"
-	.align	2
-.LC18:
-	.string	"csrrwi old"
-	.align	2
-.LC19:
-	.string	"csrrwi new"
-	.align	2
-.LC20:
-	.string	"csrrsi new"
-	.align	2
-.LC21:
-	.string	"csrrci new"
-	.align	2
-.LC22:
-	.string	"mtval write/read"
-	.align	2
-.LC23:
-	.string	"ecall cause"
-	.align	2
-.LC24:
-	.string	"ecall mtval"
-	.align	2
-.LC25:
-	.string	"ebreak cause"
-	.align	2
-.LC26:
-	.string	"ebreak mtval"
-	.align	2
-.LC27:
-	.string	"illegal cause"
-	.align	2
-.LC28:
-	.string	"illegal mtval"
-	.align	2
-.LC29:
-	.string	"bad CSR cause"
-	.align	2
-.LC30:
-	.string	"bad CSR mtval"
-	.align	2
-.LC31:
-	.string	"RO write cause"
-	.align	2
-.LC32:
-	.string	"RO write mtval"
-	.align	2
-.LC33:
-	.string	"csrr mhartid no trap"
-	.align	2
-.LC34:
-	.string	"csrrs RO rs1!=0 traps"
-	.text
-	.align	2
-	.type	run_tests, @function
-run_tests:
-	addi	sp,sp,-32
-	sw	ra,28(sp)
-	sw	s0,24(sp)
-	addi	s0,sp,32
-	lui	a5,%hi(total)
-	sw	zero,%lo(total)(a5)
-	lui	a5,%hi(fails)
-	sw	zero,%lo(fails)(a5)
+	.type	install_trap_handler, @function
+install_trap_handler:
 	lui	a5,%hi(trap_handler)
 	addi	a5,a5,%lo(trap_handler)
  #APP
-# 81 "/Users/brianhsieh/desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
+# 91 "/Users/brianhsieh/Desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
 	csrw mtvec, a5
 # 0 "" 2
-# 84 "/Users/brianhsieh/desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
-	csrr a5, misa
-# 0 "" 2
  #NO_APP
-	sw	a5,-20(s0)
-	lw	a5,-20(s0)
-	sw	a5,-24(s0)
-	lw	a5,-20(s0)
-	srli	a5,a5,30
-	li	a2,1
-	mv	a1,a5
-	lui	a5,%hi(.LC4)
-	addi	a0,a5,%lo(.LC4)
-	call	check
-	lw	a5,-20(s0)
-	srli	a5,a5,8
-	andi	a5,a5,1
-	li	a2,1
-	mv	a1,a5
-	lui	a5,%hi(.LC5)
-	addi	a0,a5,%lo(.LC5)
-	call	check
-	li	a5,0
+	ret
+	.size	install_trap_handler, .-install_trap_handler
+	.align	2
+	.type	do_ecall, @function
+do_ecall:
  #APP
-# 88 "/Users/brianhsieh/desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
-	csrw misa, a5
-# 0 "" 2
-# 89 "/Users/brianhsieh/desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
-	csrr a5, misa
-# 0 "" 2
- #NO_APP
-	sw	a5,-20(s0)
-	lw	a2,-24(s0)
-	lw	a1,-20(s0)
-	lui	a5,%hi(.LC6)
-	addi	a0,a5,%lo(.LC6)
-	call	check
- #APP
-# 93 "/Users/brianhsieh/desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
-	csrr a5, mhartid
-# 0 "" 2
- #NO_APP
-	sw	a5,-20(s0)
-	li	a2,0
-	lw	a1,-20(s0)
-	lui	a5,%hi(.LC7)
-	addi	a0,a5,%lo(.LC7)
-	call	check
-	li	a5,-559038464
-	addi	a1,a5,-273
-	lui	a5,%hi(.LC8)
-	addi	a0,a5,%lo(.LC8)
-	call	scratch_roundtrip
-	li	a1,0
-	lui	a5,%hi(.LC9)
-	addi	a0,a5,%lo(.LC9)
-	call	scratch_roundtrip
-	li	a1,-1
-	lui	a5,%hi(.LC10)
-	addi	a0,a5,%lo(.LC10)
-	call	scratch_roundtrip
-	li	a5,-1515872256
-	addi	a1,a5,1445
-	lui	a5,%hi(.LC11)
-	addi	a0,a5,%lo(.LC11)
-	call	scratch_roundtrip
-	li	a5,286330880
-	addi	a5,a5,273
- #APP
-# 103 "/Users/brianhsieh/desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
-	csrw mscratch, a5
-# 0 "" 2
- #NO_APP
-	li	a5,572661760
-	addi	a5,a5,546
- #APP
-# 104 "/Users/brianhsieh/desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
-	csrrw a5, mscratch, a5
-# 0 "" 2
- #NO_APP
-	sw	a5,-28(s0)
-	li	a5,286330880
-	addi	a2,a5,273
-	lw	a1,-28(s0)
-	lui	a5,%hi(.LC12)
-	addi	a0,a5,%lo(.LC12)
-	call	check
- #APP
-# 106 "/Users/brianhsieh/desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
-	csrr a5, mscratch
-# 0 "" 2
- #NO_APP
-	sw	a5,-20(s0)
-	li	a5,572661760
-	addi	a2,a5,546
-	lw	a1,-20(s0)
-	lui	a5,%hi(.LC13)
-	addi	a0,a5,%lo(.LC13)
-	call	check
-	li	a5,240
- #APP
-# 109 "/Users/brianhsieh/desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
-	csrw mscratch, a5
-# 0 "" 2
- #NO_APP
-	li	a5,15
- #APP
-# 110 "/Users/brianhsieh/desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
-	csrrs a5, mscratch, a5
-# 0 "" 2
- #NO_APP
-	sw	a5,-28(s0)
-	li	a2,240
-	lw	a1,-28(s0)
-	lui	a5,%hi(.LC14)
-	addi	a0,a5,%lo(.LC14)
-	call	check
- #APP
-# 112 "/Users/brianhsieh/desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
-	csrr a5, mscratch
-# 0 "" 2
- #NO_APP
-	sw	a5,-20(s0)
-	li	a2,255
-	lw	a1,-20(s0)
-	lui	a5,%hi(.LC15)
-	addi	a0,a5,%lo(.LC15)
-	call	check
-	li	a5,60
- #APP
-# 115 "/Users/brianhsieh/desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
-	csrrc a5, mscratch, a5
-# 0 "" 2
- #NO_APP
-	sw	a5,-28(s0)
-	li	a2,255
-	lw	a1,-28(s0)
-	lui	a5,%hi(.LC16)
-	addi	a0,a5,%lo(.LC16)
-	call	check
- #APP
-# 117 "/Users/brianhsieh/desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
-	csrr a5, mscratch
-# 0 "" 2
- #NO_APP
-	sw	a5,-20(s0)
-	li	a2,195
-	lw	a1,-20(s0)
-	lui	a5,%hi(.LC17)
-	addi	a0,a5,%lo(.LC17)
-	call	check
- #APP
-# 120 "/Users/brianhsieh/desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
-	csrrwi a5, mscratch, 21
-# 0 "" 2
- #NO_APP
-	sw	a5,-28(s0)
-	li	a2,195
-	lw	a1,-28(s0)
-	lui	a5,%hi(.LC18)
-	addi	a0,a5,%lo(.LC18)
-	call	check
- #APP
-# 122 "/Users/brianhsieh/desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
-	csrr a5, mscratch
-# 0 "" 2
- #NO_APP
-	sw	a5,-20(s0)
-	li	a2,21
-	lw	a1,-20(s0)
-	lui	a5,%hi(.LC19)
-	addi	a0,a5,%lo(.LC19)
-	call	check
- #APP
-# 125 "/Users/brianhsieh/desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
-	csrrsi a5, mscratch, 10
-# 0 "" 2
- #NO_APP
-	sw	a5,-28(s0)
- #APP
-# 126 "/Users/brianhsieh/desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
-	csrr a5, mscratch
-# 0 "" 2
- #NO_APP
-	sw	a5,-20(s0)
-	li	a2,31
-	lw	a1,-20(s0)
-	lui	a5,%hi(.LC20)
-	addi	a0,a5,%lo(.LC20)
-	call	check
- #APP
-# 129 "/Users/brianhsieh/desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
-	csrrci a5, mscratch, 1
-# 0 "" 2
- #NO_APP
-	sw	a5,-28(s0)
- #APP
-# 130 "/Users/brianhsieh/desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
-	csrr a5, mscratch
-# 0 "" 2
- #NO_APP
-	sw	a5,-20(s0)
-	li	a2,30
-	lw	a1,-20(s0)
-	lui	a5,%hi(.LC21)
-	addi	a0,a5,%lo(.LC21)
-	call	check
-	li	a5,305418240
-	addi	a5,a5,1656
- #APP
-# 134 "/Users/brianhsieh/desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
-	csrw mtval, a5
-# 0 "" 2
-# 135 "/Users/brianhsieh/desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
-	csrr a5, mtval
-# 0 "" 2
- #NO_APP
-	sw	a5,-20(s0)
-	li	a5,305418240
-	addi	a2,a5,1656
-	lw	a1,-20(s0)
-	lui	a5,%hi(.LC22)
-	addi	a0,a5,%lo(.LC22)
-	call	check
-	li	a5,1515872256
-	addi	a5,a5,-1446
- #APP
-# 139 "/Users/brianhsieh/desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
-	csrw mtval, a5
-# 0 "" 2
- #NO_APP
-	lui	a5,%hi(last_cause)
-	li	a4,-1
-	sw	a4,%lo(last_cause)(a5)
-	lui	a5,%hi(last_tval)
-	li	a4,-1
-	sw	a4,%lo(last_tval)(a5)
- #APP
-# 141 "/Users/brianhsieh/desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
+# 92 "/Users/brianhsieh/Desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
 	ecall
 # 0 "" 2
  #NO_APP
-	lui	a5,%hi(last_cause)
-	lw	a5,%lo(last_cause)(a5)
-	li	a2,11
-	mv	a1,a5
-	lui	a5,%hi(.LC23)
-	addi	a0,a5,%lo(.LC23)
-	call	check
-	lui	a5,%hi(last_tval)
-	lw	a5,%lo(last_tval)(a5)
-	li	a2,0
-	mv	a1,a5
-	lui	a5,%hi(.LC24)
-	addi	a0,a5,%lo(.LC24)
-	call	check
-	li	a5,1515872256
-	addi	a5,a5,-1446
+	ret
+	.size	do_ecall, .-do_ecall
+	.align	2
+	.type	do_ebreak, @function
+do_ebreak:
  #APP
-# 145 "/Users/brianhsieh/desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
-	csrw mtval, a5
-# 0 "" 2
- #NO_APP
-	lui	a5,%hi(last_cause)
-	li	a4,-1
-	sw	a4,%lo(last_cause)(a5)
-	lui	a5,%hi(last_tval)
-	li	a4,-1
-	sw	a4,%lo(last_tval)(a5)
- #APP
-# 147 "/Users/brianhsieh/desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
+# 93 "/Users/brianhsieh/Desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
 	ebreak
 # 0 "" 2
  #NO_APP
-	lui	a5,%hi(last_cause)
-	lw	a5,%lo(last_cause)(a5)
-	li	a2,3
-	mv	a1,a5
-	lui	a5,%hi(.LC25)
-	addi	a0,a5,%lo(.LC25)
-	call	check
-	lui	a5,%hi(last_tval)
-	lw	a5,%lo(last_tval)(a5)
-	li	a2,0
-	mv	a1,a5
-	lui	a5,%hi(.LC26)
-	addi	a0,a5,%lo(.LC26)
-	call	check
-	lui	a5,%hi(last_cause)
-	li	a4,-1
-	sw	a4,%lo(last_cause)(a5)
-	lui	a5,%hi(last_tval)
-	sw	zero,%lo(last_tval)(a5)
- #APP
-# 154 "/Users/brianhsieh/desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
-	.word 0xFFFFFFFF
-# 0 "" 2
- #NO_APP
-	lui	a5,%hi(last_cause)
-	lw	a5,%lo(last_cause)(a5)
-	li	a2,2
-	mv	a1,a5
-	lui	a5,%hi(.LC27)
-	addi	a0,a5,%lo(.LC27)
-	call	check
-	lui	a5,%hi(last_tval)
-	lw	a5,%lo(last_tval)(a5)
-	li	a2,-1
-	mv	a1,a5
-	lui	a5,%hi(.LC28)
-	addi	a0,a5,%lo(.LC28)
-	call	check
-	lui	a5,%hi(last_cause)
-	li	a4,-1
-	sw	a4,%lo(last_cause)(a5)
-	lui	a5,%hi(last_tval)
-	sw	zero,%lo(last_tval)(a5)
- #APP
-# 160 "/Users/brianhsieh/desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
-	.word 0x7C0023F3
-# 0 "" 2
- #NO_APP
-	lui	a5,%hi(last_cause)
-	lw	a5,%lo(last_cause)(a5)
-	li	a2,2
-	mv	a1,a5
-	lui	a5,%hi(.LC29)
-	addi	a0,a5,%lo(.LC29)
-	call	check
-	lui	a5,%hi(last_tval)
-	lw	a4,%lo(last_tval)(a5)
-	li	a5,2080382976
-	addi	a2,a5,1011
-	mv	a1,a4
-	lui	a5,%hi(.LC30)
-	addi	a0,a5,%lo(.LC30)
-	call	check
-	lui	a5,%hi(last_cause)
-	li	a4,-1
-	sw	a4,%lo(last_cause)(a5)
-	lui	a5,%hi(last_tval)
-	sw	zero,%lo(last_tval)(a5)
- #APP
-# 166 "/Users/brianhsieh/desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
-	.word 0xF1401073
-# 0 "" 2
- #NO_APP
-	lui	a5,%hi(last_cause)
-	lw	a5,%lo(last_cause)(a5)
-	li	a2,2
-	mv	a1,a5
-	lui	a5,%hi(.LC31)
-	addi	a0,a5,%lo(.LC31)
-	call	check
-	lui	a5,%hi(last_tval)
-	lw	a4,%lo(last_tval)(a5)
-	li	a5,-247459840
-	addi	a2,a5,115
-	mv	a1,a4
-	lui	a5,%hi(.LC32)
-	addi	a0,a5,%lo(.LC32)
-	call	check
-	lui	a5,%hi(trap_count)
-	lw	a5,%lo(trap_count)(a5)
-	sw	a5,-32(s0)
- #APP
-# 172 "/Users/brianhsieh/desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
-	csrr a5, mhartid
-# 0 "" 2
- #NO_APP
-	sw	a5,-20(s0)
-	lui	a5,%hi(trap_count)
-	lw	a5,%lo(trap_count)(a5)
-	lw	a2,-32(s0)
-	mv	a1,a5
-	lui	a5,%hi(.LC33)
-	addi	a0,a5,%lo(.LC33)
-	call	check
-	lui	a5,%hi(last_cause)
-	li	a4,-1
-	sw	a4,%lo(last_cause)(a5)
- #APP
-# 177 "/Users/brianhsieh/desktop/systemverilog-learning/32_bit_multi_cycle_CPU/software/main.c" 1
-	li t3, 1
-	csrrs t2, mhartid, t3
-# 0 "" 2
- #NO_APP
-	lui	a5,%hi(last_cause)
-	lw	a5,%lo(last_cause)(a5)
-	li	a2,2
-	mv	a1,a5
-	lui	a5,%hi(.LC34)
-	addi	a0,a5,%lo(.LC34)
-	call	check
-	nop
+	ret
+	.size	do_ebreak, .-do_ebreak
+	.align	2
+	.type	uart_puts, @function
+uart_puts:
+	addi	sp,sp,-16
+	sw	s0,8(sp)
+	sw	ra,12(sp)
+	mv	s0,a0
+.L14:
+	lbu	a0,0(s0)
+	bne	a0,zero,.L15
+	lw	ra,12(sp)
+	lw	s0,8(sp)
+	addi	sp,sp,16
+	jr	ra
+.L15:
+	addi	s0,s0,1
+	call	uart_putc
+	j	.L14
+	.size	uart_puts, .-uart_puts
+	.section	.rodata.str1.4,"aMS",@progbits,1
+	.align	2
+.LC0:
+	.base64	"G1syShtbSBtbPzI1bAA="
+	.text
+	.align	2
+	.type	cls, @function
+cls:
+	lui	a0,%hi(.LC0)
+	addi	a0,a0,%lo(.LC0)
+	tail	uart_puts
+	.size	cls, .-cls
+	.section	.rodata.str1.4
+	.align	2
+.LC1:
+	.string	"\033[H"
+	.text
+	.align	2
+	.type	home, @function
+home:
+	lui	a0,%hi(.LC1)
+	addi	a0,a0,%lo(.LC1)
+	tail	uart_puts
+	.size	home, .-home
+	.section	.rodata.str1.4
+	.align	2
+.LC2:
+	.string	"\033[3"
+	.text
+	.align	2
+	.type	color, @function
+color:
+	addi	sp,sp,-16
+	sw	s0,8(sp)
+	mv	s0,a0
+	lui	a0,%hi(.LC2)
+	addi	a0,a0,%lo(.LC2)
+	sw	ra,12(sp)
+	call	uart_puts
+	mv	a0,s0
+	call	uart_putc
+	lw	s0,8(sp)
+	lw	ra,12(sp)
+	li	a0,109
+	addi	sp,sp,16
+	tail	uart_putc
+	.size	color, .-color
+	.align	2
+	.type	put_dec, @function
+put_dec:
+	addi	sp,sp,-32
+	sw	s0,24(sp)
+	lui	s0,%hi(p10.2)
+	sw	s1,20(sp)
+	sw	s2,16(sp)
+	sw	s3,12(sp)
+	sw	ra,28(sp)
+	mv	s1,a0
+	addi	s0,s0,%lo(p10.2)
+	li	s2,0
+	li	a4,0
+	li	s3,4
+.L22:
+	lw	a5,0(s0)
+	li	a0,48
+	j	.L27
+.L23:
+	addi	a0,a0,1
+	sub	s1,s1,a5
+	andi	a0,a0,0xff
+.L27:
+	bleu	a5,s1,.L23
+	addi	a5,s2,-3
+	seqz	a5,a5
+	or	a5,a5,a4
+	bne	a5,zero,.L29
+	addi	a5,a0,-48
+	li	a4,0
+	beq	a5,zero,.L24
+.L29:
+	call	uart_putc
+	li	a4,1
+.L24:
+	addi	s2,s2,1
+	addi	s0,s0,4
+	bne	s2,s3,.L22
 	lw	ra,28(sp)
 	lw	s0,24(sp)
+	lw	s1,20(sp)
+	lw	s2,16(sp)
+	lw	s3,12(sp)
 	addi	sp,sp,32
 	jr	ra
-	.size	run_tests, .-run_tests
-	.section	.rodata
+	.size	put_dec, .-put_dec
+	.section	.rodata.str1.4
 	.align	2
-.LC35:
-	.string	"RESULT: FAIL "
+.LC3:
+	.string	"32"
 	.align	2
-.LC36:
-	.string	"RESULT: ALL PASS "
+.LC4:
+	.string	"??"
+	.align	2
+.LC5:
+	.string	"  _       _\r\n (_)_____(_)\r\n  /  o o  \\\r\n (    ^    )\r\n  \\  \\_/  /\r\n   '-----'\r\n"
+	.align	2
+.LC6:
+	.string	"HOMEMADE RISC-V CPU\r\n32-bit, multi-cycle\r\nSystemVerilog on FPGA\r\n"
+	.align	2
+.LC7:
+	.string	"misa says: RV"
+	.align	2
+.LC8:
+	.string	"\r\n"
 	.text
+	.align	2
+	.type	banner, @function
+banner:
+	addi	sp,sp,-16
+	sw	ra,12(sp)
+	sw	s1,4(sp)
+	sw	s0,8(sp)
+	sw	s2,0(sp)
+	call	read_misa
+	mv	s1,a0
+	call	cls
+	li	a0,55
+	call	color
+	lui	a0,%hi(.LC5)
+	addi	a0,a0,%lo(.LC5)
+	call	uart_puts
+	li	a0,54
+	call	color
+	lui	a0,%hi(.LC6)
+	addi	a0,a0,%lo(.LC6)
+	call	uart_puts
+	li	a0,57
+	call	color
+	lui	a0,%hi(.LC7)
+	addi	a0,a0,%lo(.LC7)
+	call	uart_puts
+	srli	a4,s1,30
+	li	a5,1
+	bne	a4,a5,.L36
+	lui	a0,%hi(.LC3)
+	addi	a0,a0,%lo(.LC3)
+.L33:
+	call	uart_puts
+	li	s0,0
+	li	s2,26
+.L35:
+	srl	a5,s1,s0
+	andi	a5,a5,1
+	beq	a5,zero,.L34
+	addi	a0,s0,65
+	andi	a0,a0,0xff
+	call	uart_putc
+.L34:
+	addi	s0,s0,1
+	bne	s0,s2,.L35
+	lw	s0,8(sp)
+	lw	ra,12(sp)
+	lw	s1,4(sp)
+	lw	s2,0(sp)
+	lui	a0,%hi(.LC8)
+	addi	a0,a0,%lo(.LC8)
+	addi	sp,sp,16
+	tail	uart_puts
+.L36:
+	lui	a0,%hi(.LC4)
+	addi	a0,a0,%lo(.LC4)
+	j	.L33
+	.size	banner, .-banner
+	.section	.rodata.str1.4
+	.align	2
+.LC9:
+	.string	"ecall trap OK\r\n"
+	.align	2
+.LC10:
+	.string	"ecall FAIL\r\n"
+	.align	2
+.LC11:
+	.string	"ebreak trap OK\r\n"
+	.align	2
+.LC12:
+	.string	"ebreak FAIL\r\n"
+	.text
+	.align	2
+	.type	trap_demo, @function
+trap_demo:
+	addi	sp,sp,-16
+	sw	s0,8(sp)
+	lui	s0,%hi(last_cause)
+	sw	ra,12(sp)
+	call	install_trap_handler
+	sw	zero,%lo(last_cause)(s0)
+	call	do_ecall
+	lw	a4,%lo(last_cause)(s0)
+	li	a5,11
+	bne	a4,a5,.L45
+	lui	a0,%hi(.LC9)
+	addi	a0,a0,%lo(.LC9)
+.L43:
+	call	uart_puts
+	call	do_ebreak
+	lw	a4,%lo(last_cause)(s0)
+	li	a5,3
+	bne	a4,a5,.L46
+	lui	a0,%hi(.LC11)
+	addi	a0,a0,%lo(.LC11)
+.L44:
+	lw	s0,8(sp)
+	lw	ra,12(sp)
+	addi	sp,sp,16
+	tail	uart_puts
+.L45:
+	lui	a0,%hi(.LC10)
+	addi	a0,a0,%lo(.LC10)
+	j	.L43
+.L46:
+	lui	a0,%hi(.LC12)
+	addi	a0,a0,%lo(.LC12)
+	j	.L44
+	.size	trap_demo, .-trap_demo
+	.align	2
+	.type	mul_fix, @function
+mul_fix:
+	srai	a4,a0,31
+	xor	a5,a4,a0
+	sub	a5,a5,a4
+	srai	a4,a1,31
+	xor	a3,a0,a1
+	xor	a1,a4,a1
+	sub	a1,a1,a4
+	li	a0,0
+.L49:
+	bne	a1,zero,.L50
+	srli	a0,a0,12
+	bge	a3,zero,.L48
+	neg	a0,a0
+.L48:
+	ret
+.L50:
+	slli	a2,a1,31
+	srai	a4,a2,31
+	and	a4,a4,a5
+	add	a0,a0,a4
+	slli	a5,a5,1
+	srli	a1,a1,1
+	j	.L49
+	.size	mul_fix, .-mul_fix
+	.align	2
+	.type	mandelbrot, @function
+mandelbrot:
+	addi	sp,sp,-64
+	sw	s2,48(sp)
+	sw	s6,32(sp)
+	sw	s7,28(sp)
+	li	s2,-4096
+	lui	s6,%hi(pal.0)
+	lui	s7,%hi(col.1)
+	sw	s4,40(sp)
+	sw	s8,24(sp)
+	sw	ra,60(sp)
+	sw	s0,56(sp)
+	sw	s1,52(sp)
+	sw	s3,44(sp)
+	sw	s5,36(sp)
+	sw	s9,20(sp)
+	sw	s10,16(sp)
+	sw	s11,12(sp)
+	addi	s2,s2,-819
+	call	cls
+	li	s4,-1
+	li	s8,16384
+	addi	s6,s6,%lo(pal.0)
+	addi	s7,s7,%lo(col.1)
+.L53:
+	li	s3,-8192
+	addi	s3,s3,-819
+	li	s9,32
+	j	.L60
+.L68:
+	li	a0,55
+	call	color
+.L64:
+	li	a0,64
+	call	uart_putc
+	li	s4,8
+.L57:
+	li	a5,4096
+	addi	s3,s3,218
+	addi	a5,a5,-27
+	beq	s3,a5,.L58
+.L60:
+	li	s0,0
+	li	s1,0
+	li	s5,0
+.L55:
+	mv	a1,s5
+	mv	a0,s5
+	call	mul_fix
+	mv	s10,a0
+	mv	a1,s1
+	mv	a0,s1
+	call	mul_fix
+	add	a5,s10,a0
+	mv	s11,a0
+	bgt	a5,s8,.L54
+	mv	a1,s1
+	mv	a0,s5
+	call	mul_fix
+	slli	s1,a0,1
+	addi	s0,s0,1
+	sub	a0,s10,s11
+	add	s1,s1,s2
+	add	s5,a0,s3
+	bne	s0,s9,.L55
+	li	a5,8
+	beq	s4,a5,.L64
+	j	.L68
+.L58:
+	lui	a0,%hi(.LC8)
+	addi	a0,a0,%lo(.LC8)
+	call	uart_puts
+	li	a5,4096
+	addi	s2,s2,410
+	addi	a5,a5,829
+	bne	s2,a5,.L53
+	lw	s0,56(sp)
+	lw	ra,60(sp)
+	lw	s1,52(sp)
+	lw	s2,48(sp)
+	lw	s3,44(sp)
+	lw	s4,40(sp)
+	lw	s5,36(sp)
+	lw	s6,32(sp)
+	lw	s7,28(sp)
+	lw	s8,24(sp)
+	lw	s9,20(sp)
+	lw	s10,16(sp)
+	lw	s11,12(sp)
+	li	a0,57
+	addi	sp,sp,64
+	tail	color
+.L54:
+	srai	s0,s0,2
+	beq	s0,s4,.L62
+	add	a5,s7,s0
+	lbu	a0,0(a5)
+	call	color
+.L62:
+	add	a5,s6,s0
+	lbu	a0,0(a5)
+	mv	s4,s0
+	call	uart_putc
+	j	.L57
+	.size	mandelbrot, .-mandelbrot
+	.local	buf_a
+	.comm	buf_a,64,4
+	.local	buf_b
+	.comm	buf_b,64,4
+	.local	rng_state
+	.comm	rng_state,4,4
+	.align	2
+	.type	rng, @function
+rng:
+	lui	a3,%hi(rng_state)
+	lw	a5,%lo(rng_state)(a3)
+	slli	a4,a5,13
+	xor	a4,a4,a5
+	srli	a5,a4,17
+	xor	a5,a5,a4
+	slli	a0,a5,5
+	xor	a0,a0,a5
+	sw	a0,%lo(rng_state)(a3)
+	ret
+	.size	rng, .-rng
+	.align	2
+	.type	cell, @function
+cell:
+	andi	a1,a1,15
+	slli	a1,a1,2
+	add	a0,a0,a1
+	lw	a0,0(a0)
+	srl	a0,a0,a2
+	andi	a0,a0,1
+	ret
+	.size	cell, .-cell
+	.align	2
+	.type	life_step, @function
+life_step:
+	addi	sp,sp,-80
+	sw	s1,68(sp)
+	sw	s4,56(sp)
+	sw	s6,48(sp)
+	sw	s7,44(sp)
+	sw	s8,40(sp)
+	sw	s9,36(sp)
+	sw	s10,32(sp)
+	sw	ra,76(sp)
+	sw	s0,72(sp)
+	sw	s2,64(sp)
+	sw	s3,60(sp)
+	sw	s5,52(sp)
+	sw	s11,28(sp)
+	sw	a0,4(sp)
+	sw	a1,8(sp)
+	li	s1,0
+	li	s4,2
+	li	s6,3
+	li	s7,1
+	li	s8,4
+	li	s9,32
+	li	s10,16
+.L72:
+	li	s0,0
+	li	s5,0
+	j	.L81
+.L73:
+	lw	a0,4(sp)
+	add	a2,s11,s0
+	sw	a1,12(sp)
+	addi	s11,s11,1
+	call	cell
+	lw	a1,12(sp)
+	add	s2,s2,a0
+	bne	s11,s4,.L73
+	addi	s3,s3,1
+	beq	s3,s4,.L74
+.L79:
+	add	a1,s3,s1
+	li	s11,-1
+	j	.L73
+.L74:
+	beq	s2,s6,.L75
+	bne	s2,s8,.L77
+	lw	a0,4(sp)
+	mv	a2,s0
+	mv	a1,s1
+	call	cell
+	beq	a0,zero,.L77
+.L75:
+	sll	a4,s7,s0
+	or	s5,s5,a4
+.L77:
+	addi	s0,s0,1
+	beq	s0,s9,.L78
+.L81:
+	li	s3,-1
+	li	s2,0
+	j	.L79
+.L78:
+	lw	a5,8(sp)
+	slli	a4,s1,2
+	addi	s1,s1,1
+	add	a4,a5,a4
+	sw	s5,0(a4)
+	bne	s1,s10,.L72
+	lw	ra,76(sp)
+	lw	s0,72(sp)
+	lw	s1,68(sp)
+	lw	s2,64(sp)
+	lw	s3,60(sp)
+	lw	s4,56(sp)
+	lw	s5,52(sp)
+	lw	s6,48(sp)
+	lw	s7,44(sp)
+	lw	s8,40(sp)
+	lw	s9,36(sp)
+	lw	s10,32(sp)
+	lw	s11,28(sp)
+	addi	sp,sp,80
+	jr	ra
+	.size	life_step, .-life_step
+	.align	2
+	.type	same, @function
+same:
+	li	a5,0
+	li	a2,64
+.L86:
+	add	a3,a0,a5
+	add	a4,a1,a5
+	lw	a3,0(a3)
+	lw	a4,0(a4)
+	bne	a3,a4,.L87
+	addi	a5,a5,4
+	bne	a5,a2,.L86
+	li	a0,1
+	ret
+.L87:
+	li	a0,0
+	ret
+	.size	same, .-same
+	.align	2
+	.type	population, @function
+population:
+	mv	a5,a0
+	addi	a3,a0,64
+	li	a0,0
+.L92:
+	lw	a4,0(a5)
+.L90:
+	bne	a4,zero,.L91
+	addi	a5,a5,4
+	bne	a5,a3,.L92
+	ret
+.L91:
+	addi	a2,a4,-1
+	and	a4,a4,a2
+	addi	a0,a0,1
+	j	.L90
+	.size	population, .-population
+	.align	2
+	.type	reseed, @function
+reseed:
+	addi	sp,sp,-16
+	sw	s0,8(sp)
+	sw	s1,4(sp)
+	sw	ra,12(sp)
+	sw	s2,0(sp)
+	mv	s0,a0
+	addi	s1,a0,64
+.L95:
+	call	rng
+	mv	s2,a0
+	call	rng
+	and	a0,s2,a0
+	sw	a0,0(s0)
+	addi	s0,s0,4
+	bne	s0,s1,.L95
+	lw	ra,12(sp)
+	lw	s0,8(sp)
+	lw	s1,4(sp)
+	lw	s2,0(sp)
+	addi	sp,sp,16
+	jr	ra
+	.size	reseed, .-reseed
+	.section	.rodata.str1.4
+	.align	2
+.LC13:
+	.string	"+\r\n"
+	.text
+	.align	2
+	.type	hline, @function
+hline:
+	addi	sp,sp,-16
+	li	a0,43
+	sw	s0,8(sp)
+	sw	ra,12(sp)
+	li	s0,64
+	call	uart_putc
+.L99:
+	li	a0,45
+	addi	s0,s0,-1
+	call	uart_putc
+	bne	s0,zero,.L99
+	lw	s0,8(sp)
+	lw	ra,12(sp)
+	lui	a0,%hi(.LC13)
+	addi	a0,a0,%lo(.LC13)
+	addi	sp,sp,16
+	tail	uart_puts
+	.size	hline, .-hline
+	.section	.rodata.str1.4
+	.align	2
+.LC14:
+	.string	"|\r\n"
+	.align	2
+.LC15:
+	.string	"gen "
+	.align	2
+.LC16:
+	.string	"  alive "
+	.align	2
+.LC17:
+	.string	"   \r\n"
+	.text
+	.align	2
+	.type	render, @function
+render:
+	addi	sp,sp,-48
+	sw	ra,44(sp)
+	sw	s0,40(sp)
+	sw	s2,32(sp)
+	sw	s3,28(sp)
+	mv	s2,a0
+	sw	s4,24(sp)
+	sw	s5,20(sp)
+	sw	s6,16(sp)
+	sw	s1,36(sp)
+	mv	s6,a1
+	call	home
+	li	a0,50
+	call	color
+	call	hline
+	lui	a5,%hi(.LC14)
+	mv	s0,s2
+	addi	s3,s2,64
+	li	s4,32
+	addi	s5,a5,%lo(.LC14)
+.L105:
+	li	a0,124
+	call	uart_putc
+	li	s1,0
+.L104:
+	lw	a0,0(s0)
+	srl	a0,a0,s1
+	andi	a0,a0,1
+	addi	a0,a0,-1
+	andi	a0,a0,-3
+	addi	a0,a0,35
+	sw	a0,12(sp)
+	call	uart_putc
+	lw	a0,12(sp)
+	addi	s1,s1,1
+	call	uart_putc
+	bne	s1,s4,.L104
+	mv	a0,s5
+	addi	s0,s0,4
+	call	uart_puts
+	bne	s0,s3,.L105
+	call	hline
+	lui	a0,%hi(.LC15)
+	addi	a0,a0,%lo(.LC15)
+	call	uart_puts
+	mv	a0,s6
+	call	put_dec
+	lui	a0,%hi(.LC16)
+	addi	a0,a0,%lo(.LC16)
+	call	uart_puts
+	mv	a0,s2
+	call	population
+	call	put_dec
+	lw	s0,40(sp)
+	lw	ra,44(sp)
+	lw	s1,36(sp)
+	lw	s2,32(sp)
+	lw	s3,28(sp)
+	lw	s4,24(sp)
+	lw	s5,20(sp)
+	lw	s6,16(sp)
+	lui	a0,%hi(.LC17)
+	addi	a0,a0,%lo(.LC17)
+	addi	sp,sp,48
+	tail	uart_puts
+	.size	render, .-render
+	.align	2
+	.type	life_demo, @function
+life_demo:
+	addi	sp,sp,-32
+	sw	s0,24(sp)
+	li	a5,625340416
+	lui	s0,%hi(buf_a)
+	lui	a4,%hi(rng_state)
+	addi	a5,a5,1169
+	addi	a0,s0,%lo(buf_a)
+	sw	s1,20(sp)
+	lui	s1,%hi(buf_b)
+	sw	ra,28(sp)
+	sw	s2,16(sp)
+	sw	s3,12(sp)
+	sw	a5,%lo(rng_state)(a4)
+	li	s2,0
+	call	reseed
+	addi	s1,s1,%lo(buf_b)
+	call	cls
+	addi	s0,s0,%lo(buf_a)
+	li	s3,200
+.L112:
+	mv	a1,s2
+	mv	a0,s0
+	call	render
+	mv	a1,s1
+	mv	a0,s0
+	call	life_step
+	mv	a1,s0
+	mv	a0,s1
+	call	same
+	beq	a0,zero,.L111
+	mv	a0,s1
+	call	reseed
+.L111:
+	addi	s2,s2,1
+	mv	a5,s1
+	mv	s1,s0
+	bne	s2,s3,.L113
+	lw	ra,28(sp)
+	lw	s0,24(sp)
+	lw	s1,20(sp)
+	lw	s2,16(sp)
+	lw	s3,12(sp)
+	addi	sp,sp,32
+	jr	ra
+.L113:
+	mv	s0,a5
+	j	.L112
+	.size	life_demo, .-life_demo
+	.section	.text.startup,"ax",@progbits
 	.align	2
 	.globl	main
 	.type	main, @function
 main:
+	li	a0,2998272
 	addi	sp,sp,-16
+	addi	a0,a0,1728
 	sw	ra,12(sp)
-	sw	s0,8(sp)
-	addi	s0,sp,16
-	call	delay
-.L26:
-	call	run_tests
-	lui	a5,%hi(fails)
-	lw	a5,%lo(fails)(a5)
-	beq	a5,zero,.L24
-	lui	a5,%hi(.LC35)
-	addi	a5,a5,%lo(.LC35)
-	j	.L25
-.L24:
-	lui	a5,%hi(.LC36)
-	addi	a5,a5,%lo(.LC36)
-.L25:
-	mv	a0,a5
-	call	uart_puts
-	lui	a5,%hi(total)
-	lw	a4,%lo(total)(a5)
-	lui	a5,%hi(fails)
-	lw	a5,%lo(fails)(a5)
-	sub	a5,a4,a5
-	mv	a0,a5
-	call	put_dec2
-	li	a0,47
-	call	uart_putc
-	lui	a5,%hi(total)
-	lw	a5,%lo(total)(a5)
-	mv	a0,a5
-	call	put_dec2
-	lui	a5,%hi(.LC3)
-	addi	a0,a5,%lo(.LC3)
-	call	uart_puts
-	call	delay
-	j	.L26
+	call	spin
+.L119:
+	call	banner
+	call	trap_demo
+	li	a0,2998272
+	addi	a0,a0,1728
+	call	spin
+	call	mandelbrot
+	li	a0,6000640
+	addi	a0,a0,-640
+	call	spin
+	call	life_demo
+	j	.L119
 	.size	main, .-main
+	.section	.rodata
+	.align	2
+	.type	p10.2, @object
+	.size	p10.2, 16
+p10.2:
+	.word	1000
+	.word	100
+	.word	10
+	.word	1
+	.align	2
+	.type	col.1, @object
+	.size	col.1, 8
+col.1:
+	.ascii	"44623157"
+	.align	2
+	.type	pal.0, @object
+	.size	pal.0, 8
+pal.0:
+	.ascii	" .:-=+*%"
 	.ident	"GCC: (GNU) 16.2.0"
 	.section	.note.GNU-stack,"",@progbits
