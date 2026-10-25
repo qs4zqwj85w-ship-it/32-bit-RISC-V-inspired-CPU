@@ -25,6 +25,12 @@ module control_fsm (
     input  logic is_csr,
     input logic is_mret,
 
+    // M extension
+    input  logic is_mult,
+    input  logic is_div,
+    input  logic div_done,
+    input  logic div_ready,
+
 
     // PC and instruction fetch
     output logic pc_enable,
@@ -52,7 +58,7 @@ module control_fsm (
 
     // Register-file writeback
     output logic reg_write_enable,
-    output logic [1:0] wb_sel,
+    output logic [2:0] wb_sel,
 
     // JALR target mask
     output logic jalr_target_mask,
@@ -64,21 +70,24 @@ module control_fsm (
     output logic csr_execute,
     output logic mret_execute,
 
+    // M extension
+    output logic div_start
 );
 
 // State encodings
-localparam logic [2:0] FETCH       = 3'b001;
-localparam logic [2:0] DECODE      = 3'b010;
-localparam logic [2:0] EXECUTE     = 3'b011;
-localparam logic [2:0] MEMORY      = 3'b100;
-localparam logic [2:0] WRITEBACK   = 3'b101;
-localparam logic [2:0] FETCH_WAIT  = 3'b110;
-localparam logic [2:0] MEMORY_WAIT = 3'b111;
+localparam logic [3:0] TRAP = 4'b0000;
+localparam logic [3:0] FETCH       = 4'b0001;
+localparam logic [3:0] DECODE      = 4'b0010;
+localparam logic [3:0] EXECUTE     = 4'b0011;
+localparam logic [3:0] MEMORY      = 4'b0100;
+localparam logic [3:0] WRITEBACK   = 4'b0101;
+localparam logic [3:0] FETCH_WAIT  = 4'b0110;
+localparam logic [3:0] MEMORY_WAIT = 4'b0111;
+localparam logic [3:0] DIV_WAIT = 4'b1000;
 
-localparam logic [2:0] TRAP = 3'b000;
 
-logic [2:0] state;
-logic [2:0] next_state;
+logic [3:0] state;
+logic [3:0] next_state;
 
 
 
@@ -117,7 +126,7 @@ always_comb begin
     op_AB_reg_write_enable = 1'b0;
 
     reg_write_enable = 1'b0;
-    wb_sel = 2'b00;
+    wb_sel = 3'b000;
 
     jalr_target_mask = 1'b0;
 
@@ -125,6 +134,8 @@ always_comb begin
 
     csr_execute = 1'b0;
     mret_execute = 1'b0;
+
+    div_start = 1'b0;
 
     case (state)
 
@@ -192,7 +203,6 @@ always_comb begin
             else if (illegal) begin
                 next_state = TRAP;
             end
-
             else if (is_csr) begin
                 csr_execute = 1'b1;
                 next_state  = WRITEBACK;
@@ -201,6 +211,19 @@ always_comb begin
                 mret_execute = 1'b1;
                 pc_enable = 1'b1;
                 next_state = FETCH;
+            end
+            
+            // M extension stuff
+            else if (is_mult) begin
+                next_state = WRITEBACK;
+            end
+            else if (is_div) begin
+                if (div_ready) begin
+                    div_start = 1'b1;
+                    next_state = DIV_WAIT;
+                end else begin
+                    next_state = EXECUTE;
+                end
             end
 
             // R-type ALU instructions
@@ -377,17 +400,22 @@ always_comb begin
 
                 // Load result from MDR
                 if (load_type != 3'b000) begin
-                    wb_sel = 2'b01;
+                    wb_sel = 3'b001;
                 end
 
                 // LUI immediate
                 else if (is_lui) begin
-                    wb_sel = 2'b11;
+                    wb_sel = 3'b011;
                 end
+
+                // M extension
+                else if (is_mult || is_div) begin
+                    wb_sel = 3'b100;
+                end 
 
                 // ALU, AUIPC, JAL, JALR
                 else begin
-                    wb_sel = 2'b00;
+                    wb_sel = 3'b000;
                 end
             end
 
@@ -406,6 +434,14 @@ always_comb begin
             trap_enter = 1'b1;
             pc_enable  = 1'b1;
             next_state = FETCH;
+        end
+
+        DIV_WAIT: begin
+            if (div_done) begin
+                next_state = WRITEBACK;
+            end else begin
+                next_state = DIV_WAIT;
+            end
         end
         
     endcase

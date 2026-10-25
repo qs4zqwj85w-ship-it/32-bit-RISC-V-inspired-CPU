@@ -101,16 +101,13 @@ module CPU #(
     logic is_ebreak;
     logic trap_enter;
 
-    logic [31:0] mtvec;
-
     /* verilator lint_off UNUSEDSIGNAL */
-    logic [31:0] mepc;
     logic [31:0] mcause;
     /* verilator lint_on UNUSEDSIGNAL */
 
     // Register writeback
     logic        reg_write_enable;
-    logic [1:0]  wb_sel;
+    logic [2:0] wb_sel;
     logic [31:0] writeback_data;
 
 
@@ -152,6 +149,20 @@ module CPU #(
     logic [31:0] trap_value;
     logic csr_addr_read_only;
 
+    // M-extension decoder outputs
+    logic        is_mult;
+    logic        is_div;
+    logic [2:0]  m_type;
+
+    // M-extension results
+    logic [31:0] mult_result;
+    logic [31:0] div_result;
+    logic [31:0] m_result;
+
+    // Divider handshake
+    logic        div_start;
+    logic        div_done;
+    logic        div_ready;
 
 
 
@@ -165,7 +176,6 @@ module CPU #(
             stat_sel_q <= (memory_address == UART_STAT_ADDR);
 
     assign memory_read_data = stat_sel_q ? {31'b0, uart_busy} : ram_read_data;
-
 
     // =====================================================
     // 1. Program Counter
@@ -222,7 +232,11 @@ module CPU #(
         .writes_rd(writes_rd),
         .illegal(illegal),
         .is_csr(is_csr),
-        .is_mret(is_mret)
+        .is_mret(is_mret),
+
+        .is_mult(is_mult),
+        .is_div(is_div),
+        .m_type(m_type)
     );
 
 
@@ -418,13 +432,18 @@ module CPU #(
 
     assign writeback_data =
         is_csr ? csr_old_value : normal_writeback_data;
+
+    // Select the result from the active M-extension unit
+    assign m_result = is_div ? div_result : mult_result;
+
     memory_writeback_mux writeback_mux_inst (
-        .alu_out_reg_out(alu_out_reg_out),
-        .mdr_out(mdr_out),
-        .pc_out(pc_out),
-        .immediate(immediate),
-        .wb_sel(wb_sel),
-        .writeback_data(normal_writeback_data)
+        .alu_out_reg_out (alu_out_reg_out),
+        .mdr_out         (mdr_out),
+        .pc_out          (pc_out),
+        .immediate       (immediate),
+        .m_result        (m_result),
+        .wb_sel          (wb_sel),
+        .writeback_data  (normal_writeback_data)
     );
 
 
@@ -496,7 +515,13 @@ module CPU #(
         .csr_execute(csr_execute),
 
         .is_mret(is_mret),
-        .mret_execute(mret_execute)
+        .mret_execute(mret_execute),
+
+        .is_mult(is_mult),
+        .is_div(is_div),
+        .div_done(div_done),
+        .div_ready(div_ready),
+        .div_start(div_start)
     );
 
     // =====================================================
@@ -540,9 +565,37 @@ module CPU #(
         .csr_addr_read_only(csr_addr_read_only)
     );
 
+    // =====================================================
+    // 19. M-extension divider
+    // =====================================================
+
+    m_division m_division_inst (
+        .clk       (clk),
+        .reset_n   (~reset),       // CPU reset is active-high
+        .start     (div_start),
+        .dividend  (operand_a),
+        .divisor   (operand_b),
+        .operation (m_type),
+
+        .busy      (),
+        .ready     (div_ready),
+        .done      (div_done),
+        .result    (div_result)
+    );
 
     // =====================================================
-    // 19. Debug Result Monitor
+    // 20. M-extension multiplier
+    // =====================================================
+
+    m_extension m_extension_inst (
+        .operand_a (operand_a),
+        .operand_b (operand_b),
+        .operation (m_type),
+        .result    (mult_result)
+    );
+
+    // =====================================================
+    // 21. Debug Result Monitor
     // =====================================================
 
     // Records the last value written to a nonzero

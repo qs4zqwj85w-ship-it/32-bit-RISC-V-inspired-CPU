@@ -28,7 +28,11 @@ module decoder (
     output logic is_ebreak,
     // CSR instructions
     output logic is_csr,
-    output logic is_mret
+    output logic is_mret,
+    //M extension
+    output logic is_mult,
+    output logic is_div,
+    output logic [2:0] m_type
 );
 
     logic [6:0] opcode;
@@ -66,24 +70,37 @@ module decoder (
         is_csr = 1'b0;
         is_mret = 1'b0;
 
+        is_mult = 1'b0;
+        is_div = 1'b0;
+        m_type = 3'b000;
+
         case (opcode)
 
             // R-type instructions
             7'b0110011: begin
-                is_alu_reg = 1'b1;
 
                 // Decode funct7 and funct3 together
                 case ({funct7, funct3})
-                    {7'b0000000, 3'b000}: begin alu_op = 4'd0; illegal = 1'b0; end // ADD
-                    {7'b0100000, 3'b000}: begin alu_op = 4'd1; illegal = 1'b0; end // SUB
-                    {7'b0000000, 3'b100}: begin alu_op = 4'd2; illegal = 1'b0; end // XOR
-                    {7'b0000000, 3'b110}: begin alu_op = 4'd3; illegal = 1'b0; end // OR
-                    {7'b0000000, 3'b111}: begin alu_op = 4'd4; illegal = 1'b0; end // AND
-                    {7'b0000000, 3'b001}: begin alu_op = 4'd5; illegal = 1'b0; end // SLL
-                    {7'b0000000, 3'b101}: begin alu_op = 4'd6; illegal = 1'b0; end // SRL
-                    {7'b0100000, 3'b101}: begin alu_op = 4'd7; illegal = 1'b0; end // SRA
-                    {7'b0000000, 3'b010}: begin alu_op = 4'd8; illegal = 1'b0; end // SLT
-                    {7'b0000000, 3'b011}: begin alu_op = 4'd9; illegal = 1'b0; end // SLTU
+                    {7'b0000000, 3'b000}: begin alu_op = 4'd0; is_alu_reg = 1'b1; illegal = 1'b0; end // ADD
+                    {7'b0100000, 3'b000}: begin alu_op = 4'd1; is_alu_reg = 1'b1; illegal = 1'b0; end // SUB
+                    {7'b0000000, 3'b100}: begin alu_op = 4'd2; is_alu_reg = 1'b1; illegal = 1'b0; end // XOR
+                    {7'b0000000, 3'b110}: begin alu_op = 4'd3; is_alu_reg = 1'b1; illegal = 1'b0; end // OR
+                    {7'b0000000, 3'b111}: begin alu_op = 4'd4; is_alu_reg = 1'b1; illegal = 1'b0; end // AND
+                    {7'b0000000, 3'b001}: begin alu_op = 4'd5; is_alu_reg = 1'b1; illegal = 1'b0; end // SLL
+                    {7'b0000000, 3'b101}: begin alu_op = 4'd6; is_alu_reg = 1'b1; illegal = 1'b0; end // SRL
+                    {7'b0100000, 3'b101}: begin alu_op = 4'd7; is_alu_reg = 1'b1; illegal = 1'b0; end // SRA
+                    {7'b0000000, 3'b010}: begin alu_op = 4'd8; is_alu_reg = 1'b1; illegal = 1'b0; end // SLT
+                    {7'b0000000, 3'b011}: begin alu_op = 4'd9; is_alu_reg = 1'b1; illegal = 1'b0; end // SLTU
+
+                    // M extension
+                    {7'b0000001, 3'b000}: begin m_type = 4'd0; is_mult = 1'b1; illegal = 1'b0; end // MUL
+                    {7'b0000001, 3'b001}: begin m_type = 4'd1; is_mult = 1'b1; illegal = 1'b0; end // MULH
+                    {7'b0000001, 3'b010}: begin m_type = 4'd2; is_mult = 1'b1; illegal = 1'b0; end // MULHSU
+                    {7'b0000001, 3'b011}: begin m_type = 4'd3; is_mult = 1'b1; illegal = 1'b0; end // MULHU
+                    {7'b0000001, 3'b100}: begin m_type = 4'd4; is_div = 1'b1; illegal = 1'b0; end // DIV
+                    {7'b0000001, 3'b101}: begin m_type = 4'd5; is_div = 1'b1; illegal = 1'b0; end // DIVU
+                    {7'b0000001, 3'b110}: begin m_type = 4'd6; is_div = 1'b1; illegal = 1'b0; end // REM
+                    {7'b0000001, 3'b111}: begin m_type = 4'd7; is_div = 1'b1; illegal = 1'b0; end // REMU
 
                     default: illegal = 1'b1;
                 endcase

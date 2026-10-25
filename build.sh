@@ -32,7 +32,10 @@ FILES="$(printf '%s ' \
   './10_MAR/mar.sv' \
   './13_branch_control/branch_control.sv' \
   './21_CSR/machine_csrs.sv' \
+  './22_M_Extension/m_extension.sv' \
+  './22_M_Extension/m_division.sv'
 )"
+
 
 
 echo "=== Synthesis ==="
