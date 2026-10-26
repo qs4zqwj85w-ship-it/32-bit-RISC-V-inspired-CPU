@@ -1,6 +1,6 @@
 # Architecture
 
-This document describes how the current RTL is organized. It starts with implementation facts that can be checked against the code. The reasoning behind some choices is something I want to write down accurately, so the design-rationale section is intentionally left for us to develop together rather than guess.
+This document describes how the current RTL is organized and records the reasoning behind the main design choices. It separates implementation details that can be checked against the code from the practical motivations and trade-offs that shaped the project.
 
 ## Overview
 
