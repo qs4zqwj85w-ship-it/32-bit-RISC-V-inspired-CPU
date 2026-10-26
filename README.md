@@ -50,7 +50,11 @@ The RTL is split into numbered directories so core components can be developed a
 | M-extension multiplication | Implemented; module-level testbench included |
 | M-extension division/remainder | Integrated; edge cases and CPU-level behavior still being verified |
 | Supervisor/user modes, virtual memory, atomics, compressed and floating-point extensions | Not implemented |
-| External SDRAM and video output | Future work |
+| External SDRAM | Future work |
+| video output | Future work |
+| Flappy Bird implementation ? | Future work |
+| Wolfenstein implementation | Future work |
+| DOOM implementation | Future work |
 
 The CSR implementation includes the machine-mode state needed by the current trap path, including **mstatus**, **mtvec**, **mepc**, **mcause**, and **mtval**, along with additional machine CSRs. This is a deliberately limited machine-mode implementation, not a complete privileged-architecture implementation.
 
