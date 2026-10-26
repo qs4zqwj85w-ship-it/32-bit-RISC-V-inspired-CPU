@@ -1,2 +1,152 @@
-# 32-bit-RISC-V-inspired-CPU
-Personal attempt to design 32 bit RISC using the skills I've learnt while designing the 8 bit version
+# 32-bit Multi-Cycle RISC-V CPU
+
+A 32-bit RISC-V-inspired processor written in **SystemVerilog**, built from individual datapath and control modules, and deployed on a **Tang Nano 20K FPGA**. This project extends my earlier 8-bit CPU work toward a processor that can execute bare-metal C, handle machine-mode traps, and communicate over a memory-mapped UART.
+
+> **Project status:** Working hardware/software prototype. The core, on-chip memory, UART output, machine-mode CSR/trap path, and M-extension datapath are integrated. The iterative division/remainder unit is connected but still undergoing verification; this is not yet a claim of complete RISC-V compliance.
+
+## Highlights
+
+- Multi-cycle CPU controlled by a finite-state machine, with modular datapath components.
+- 32-bit registers and integer datapath, RV32I-style instruction decoding, immediate generation, branches, and jumps.
+- 4 KiB synchronous on-chip RAM with byte, halfword, and word loads/stores.
+- Machine-mode CSR support and trap handling for events including ECALL, EBREAK, and illegal instructions.
+- Memory-mapped UART transmitter for output from bare-metal C programs.
+- M-extension multiplication (MUL, MULH, MULHSU, MULHU) and an iterative divider/remainder unit (DIV, DIVU, REM, REMU) under ongoing verification.
+- Scripts to compile C into a memory image, synthesize/place-and-route the design, package the FPGA bitstream, and program the board.
+
+## Architecture
+
+The processor reuses a shared datapath over multiple clock cycles rather than completing an instruction in a single cycle.
+
+~~~mermaid
+flowchart LR
+    PC[Program Counter] --> MEM[On-chip RAM]
+    MEM --> IR[Instruction Register]
+    IR --> DEC[Decoder and Control FSM]
+    DEC --> RF[Register File]
+    RF --> OP[Operand Registers]
+    OP --> ALU[ALU and Branch Logic]
+    OP --> M[M Extension]
+    ALU --> WB[Writeback Mux]
+    M --> WB
+    MEM --> WB
+    WB --> RF
+    DEC <--> CSR[Machine CSRs and Trap Logic]
+    CPU[CPU] --> UART[Memory-Mapped UART TX]
+~~~
+
+The RTL is split into numbered directories so core components can be developed and tested independently. Each instruction advances through the control states it needs—for example, instruction fetch, decode/register read, execution, memory access when required, and writeback.
+
+## ISA and implementation status
+
+| Area | Current status |
+|---|---|
+| RV32I-style integer datapath and control flow | Implemented; verification is ongoing |
+| Register file, with **x0** fixed at zero | Implemented |
+| Immediate generation and ALU operations | Implemented; component testbenches included |
+| Byte/halfword/word memory access | Implemented in the on-chip RAM module |
+| Zicsr instructions and selected machine-mode CSRs | Implemented; CSR test programs included |
+| Machine-mode trap flow and **mret** | Implemented for the supported trap/CSR subset |
+| M-extension multiplication | Implemented; module-level testbench included |
+| M-extension division/remainder | Integrated; edge cases and CPU-level behavior still being verified |
+| Supervisor/user modes, virtual memory, atomics, compressed and floating-point extensions | Not implemented |
+| External SDRAM and video output | Future work |
+
+The CSR implementation includes the machine-mode state needed by the current trap path, including **mstatus**, **mtvec**, **mepc**, **mcause**, and **mtval**, along with additional machine CSRs. This is a deliberately limited machine-mode implementation, not a complete privileged-architecture implementation.
+
+## Target hardware and tools
+
+**Board:** Sipeed Tang Nano 20K  
+**FPGA target:** Gowin GW2A-18C / GW2AR-LV18QN88C8/I7  
+**Clock input:** 27 MHz  
+**UART:** TX-only serial output at 115200 baud
+
+The build flow uses:
+
+- [OSS CAD Suite](https://github.com/YosysHQ/oss-cad-suite) — Yosys and FPGA toolchain environment
+- Yosys — synthesis
+- nextpnr-himbaechel — place and route
+- gowin_pack — bitstream packaging
+- [openFPGALoader](https://github.com/trabucayre/openFPGALoader) — FPGA programming
+- RISC-V GNU toolchain commands such as riscv64-elf-gcc, riscv64-elf-as, and riscv64-elf-objcopy
+- Python 3 and screen for image generation and serial monitoring
+
+The shell scripts currently assume OSS CAD Suite is available at $HOME/tools/oss-cad-suite/environment. The automatic serial-port detection in run.sh uses macOS-style /dev/cu.usbserial-* paths.
+
+## Build and run on the FPGA
+
+Connect the Tang Nano 20K over USB, install the toolchain dependencies above, then run these commands from the repository root:
+
+~~~bash
+chmod +x run.sh build.sh
+./run.sh
+~~~
+
+run.sh performs the full workflow:
+
+1. Generates startup assembly and a linker script for the bare-metal program.
+2. Compiles and links software/main.c for rv32i_zicsr.
+3. Converts the program into the 32-bit-word memory image program.hex.
+4. Runs build.sh to synthesize, place and route, package, and flash the FPGA design.
+5. Opens a serial terminal at 115200 baud.
+
+To rebuild and flash the FPGA using the **existing** program.hex without recompiling the C program:
+
+~~~bash
+./build.sh
+~~~
+
+To select a particular serial port, set UART_PORT when running the full script:
+
+~~~bash
+UART_PORT=/dev/cu.usbserial-XXXX ./run.sh
+~~~
+
+The main demo in software/main.c is designed to cycle through a terminal banner, machine-mode trap demonstrations, a fixed-point Mandelbrot renderer, and Conway's Game of Life. It uses RV32I plus CSR instructions rather than compiler-generated M-extension instructions. Open the serial output in a terminal that supports ANSI escape sequences; the demo source recommends a terminal of at least 70 columns by 28 rows.
+
+## Memory map
+
+| Address range / address | Function |
+|---|---|
+| 0x00000000–0x00000FFF | 4 KiB on-chip RAM; instruction image and data share this memory |
+| 0x10000000 | UART transmit data register |
+| 0x10000004 | UART status register; bit 0 is high while the transmitter is busy |
+
+The RAM contains 1024 32-bit words. The firmware startup code places the stack at the top of RAM and reserves the top 256 bytes for stack space; the build script rejects program images that would overlap that reserved region. The memory module supports byte, halfword, and word operations, including signed and unsigned byte/halfword loads.
+
+## Repository layout
+
+| Path | Purpose |
+|---|---|
+| 01_Register_File/ | General-purpose register file |
+| 02_alu/, 03_imm_gen/, 04_decoder/ | ALU, immediate generation, and instruction decoding |
+| 05_PC/, 07_instruction_register/ | Program counter and instruction register |
+| 06_memory/ | Synchronous RAM and subword load/store logic |
+| 08_MDR/, 09_ALU_out_reg/, 10_MAR/, 11_op_AB_reg/ | Datapath registers |
+| 12_muxes_32/–17_memory_writeback_mux/ | Datapath and writeback selection logic |
+| 18_control_fsm/ | Multi-cycle controller |
+| 19_CPU/ | CPU integration, FPGA top module, and CPU testbenches |
+| 20_UART/ | UART transmitter |
+| 21_CSR/ | Machine CSR and trap-related logic |
+| 22_M_Extension/ | Multiplication, iterative division, and testbenches |
+| software/ | Bare-metal C demos and CSR/M-extension integration tests |
+| build.sh | Synthesize, place-and-route, package, and program |
+| run.sh | Compile firmware, generate program.hex, build/flash, and open UART |
+| cpu_fpga_top.cst | FPGA pin constraints |
+
+## Testing
+
+SystemVerilog testbenches are kept beside the relevant modules. They cover components and CPU behaviors such as ALU operations, branches, jumps, upper immediates, and byte/halfword/word memory accesses. The M-extension directory contains separate multiplication and division testbenches. Bare-metal test programs for CSR behavior, traps, and M-extension CPU integration are in software/.
+
+The hardware build scripts do **not** automatically run every simulation testbench. Passing synthesis or flashing the FPGA should not be treated as proof of full ISA correctness; regression testing and broader instruction-level validation remain part of the project.
+
+## Planned work
+
+- Finish validating signed/unsigned division and remainder corner cases and the complete M-extension path.
+- Expand instruction-level regression testing against architectural reference tests.
+- Integrate external SDRAM to increase usable memory beyond the current 4 KiB on-chip RAM.
+- Explore video output and more demanding bare-metal applications.
+
+---
+
+This is a learning and hardware-development project, and the implementation may differ from the RISC-V specification in areas that have not yet been verified. The status above is intended to distinguish integrated functionality from ongoing work.
