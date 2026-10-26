@@ -77,7 +77,7 @@ The build flow uses:
 - RISC-V GNU toolchain commands such as riscv64-elf-gcc, riscv64-elf-as, and riscv64-elf-objcopy
 - Python 3 and screen for image generation and serial monitoring
 
-**Toolchain attribution:** The compiler and assembler are prebuilt, publicly available RISC-V toolchain programs. I did not write or build these tools; I use them to compile and assemble the firmware. This repository contains the hardware design and scripts that invoke the external toolchain, not a compiler or assembler implementation.
+**Toolchain attribution:** The compiler (`riscv64-elf-gcc`) and assembler (`riscv64-elf-as`) are existing tools from the publicly available [RISC-V GNU toolchain ecosystem](https://github.com/riscv-collab/riscv-gnu-toolchain). I did not write or build the compiler or assembler; I use them to compile and assemble the firmware. This repository contains the CPU hardware and build scripts that invoke those external tools, not a compiler or assembler implementation.
 
 The shell scripts currently assume OSS CAD Suite is available at $HOME/tools/oss-cad-suite/environment. The automatic serial-port detection in run.sh uses macOS-style /dev/cu.usbserial-* paths.
 
