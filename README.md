@@ -2,6 +2,8 @@
 
 A 32-bit RISC-V-inspired processor written in **SystemVerilog**, built from individual datapath and control modules, and deployed on a **Tang Nano 20K FPGA**. This project extends my earlier 8-bit CPU work toward a processor that can execute bare-metal C, handle machine-mode traps, and communicate over a memory-mapped UART.
 
+More detailed notes: [ISA overview](ISA.md) · [Architecture and datapath](architecture.md)
+
 > **Project status:** Working hardware/software prototype. The core, on-chip memory, UART output, machine-mode CSR/trap path, and M-extension datapath are integrated. The iterative division/remainder unit is connected but still undergoing verification; this is not yet a claim of complete RISC-V compliance.
 
 ## Highlights
@@ -74,6 +76,8 @@ The build flow uses:
 - [openFPGALoader](https://github.com/trabucayre/openFPGALoader) — FPGA programming
 - RISC-V GNU toolchain commands such as riscv64-elf-gcc, riscv64-elf-as, and riscv64-elf-objcopy
 - Python 3 and screen for image generation and serial monitoring
+
+**Toolchain attribution:** The compiler and assembler are prebuilt, publicly available RISC-V toolchain programs. I did not write or build these tools; I use them to compile and assemble the firmware. This repository contains the hardware design and scripts that invoke the external toolchain, not a compiler or assembler implementation.
 
 The shell scripts currently assume OSS CAD Suite is available at $HOME/tools/oss-cad-suite/environment. The automatic serial-port detection in run.sh uses macOS-style /dev/cu.usbserial-* paths.
 
