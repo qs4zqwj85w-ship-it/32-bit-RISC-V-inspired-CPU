@@ -22,7 +22,8 @@ module cpu_fpga_top (
     always_ff @(posedge clk_main) begin
         if (pll_lock) begin
             startup_counter <= 6'd0;
-        else if (startup_counter != 6'd63)
+        end 
+        else if (startup_counter != 6'd63) begin
             startup_counter <= startup_counter + 1'b1;
         end
     end
