@@ -1,7 +1,7 @@
 module cpu_fpga_top (
     input  logic clk_27m,
     output logic led0_n,
-    output logic uart_tx
+    output logic uart_tx,
 
     output wire O_sdram_clk,
     output wire O_sdram_cke,
@@ -19,7 +19,7 @@ module cpu_fpga_top (
     logic [5:0] startup_counter = 6'd0;
     logic reset;
 
-    always_ff @(posedge clk_27m) begin
+    always_ff @(posedge clk_main) begin
         if (startup_counter != 6'd63)
             startup_counter <= startup_counter + 1'b1;
     end
@@ -50,7 +50,7 @@ module cpu_fpga_top (
         .uart_wr_en   (cpu_uart_wr),
         .uart_wr_data (cpu_uart_data),
         .uart_busy    (uart_busy),
-        .clk_sdram  (O_sdram_clk),
+        .clk_sdram  (clk_sdram),
         .SDRAM_DQ   (IO_sdram_dq),
         .SDRAM_A    (O_sdram_addr),
         .SDRAM_BA   (O_sdram_ba),
@@ -81,7 +81,7 @@ module cpu_fpga_top (
     // Sticky LED: lights once the CPU's result register has been 12
     logic result_seen = 1'b0;
 
-    always_ff @(posedge clk_27m) begin
+    always_ff @(posedge clk_main) begin
         if (reset)
             result_seen <= 1'b0;
         else if (cpu_result == 32'd12)
