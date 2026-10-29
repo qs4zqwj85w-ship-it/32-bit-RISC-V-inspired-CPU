@@ -33,13 +33,14 @@ FILES="$(printf '%s ' \
   './13_branch_control/branch_control.sv' \
   './21_CSR/machine_csrs.sv' \
   './22_M_Extension/m_extension.sv' \
-  './22_M_Extension/m_division.sv'
+  './22_M_Extension/m_division.sv' \
+  './23_SDRAM/sdram_adapter.sv' 
 )"
 
 
 
 echo "=== Synthesis ==="
-yosys -p "read_verilog -sv $FILES; synth_gowin -top cpu_fpga_top -json cpu.json" > synth.log 2>&1
+yosys -p "read_verilog ./23_SDRAM/gowin_rpll.v ./23_SDRAM/sdram.v; read_verilog -sv $FILES; synth_gowin -top cpu_fpga_top -json cpu.json" > synth.log 2>&1
 
 echo "=== Place and route ==="
 nextpnr-himbaechel \
