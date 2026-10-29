@@ -15,7 +15,20 @@ module cpu_fpga_top (
     output wire [3:0] O_sdram_dqm
 );
 
-    // Startup reset
+    // PLL-generated clocks
+    logic clk_main;
+    logic clk_sdram;
+    logic pll_lock;
+
+    Gowin_rPLL pll_inst (
+        .clkout  (clk_main),
+        .clkoutp (clk_sdram),
+        .lock    (pll_lock),
+        .reset   (1'b0),
+        .clkin   (clk_27m)
+    );
+
+    // Hold the system in reset until the PLL locks, then wait 63 main-clock cycles.
     logic [5:0] startup_counter = 6'd0;
     logic reset;
 
@@ -26,7 +39,7 @@ module cpu_fpga_top (
             startup_counter <= startup_counter + 1'b1;
     end
 
-assign reset = !pll_lock || (startup_counter != 6'd63);
+    assign reset = !pll_lock || (startup_counter != 6'd63);
 
     // UART, driven by the CPU
     logic       cpu_uart_wr;
@@ -42,7 +55,7 @@ assign reset = !pll_lock || (startup_counter != 6'd63);
         .busy    (uart_busy)
     );
 
-    // RV32I CPU
+    // CPU core and external SDRAM pins
     logic [31:0] cpu_result;
 
     CPU cpu_inst (
@@ -52,35 +65,20 @@ assign reset = !pll_lock || (startup_counter != 6'd63);
         .uart_wr_en   (cpu_uart_wr),
         .uart_wr_data (cpu_uart_data),
         .uart_busy    (uart_busy),
-        .clk_sdram  (clk_sdram),
-        .SDRAM_DQ   (IO_sdram_dq),
-        .SDRAM_A    (O_sdram_addr),
-        .SDRAM_BA   (O_sdram_ba),
-        .SDRAM_nCS  (O_sdram_cs_n),
-        .SDRAM_nWE  (O_sdram_wen_n),
-        .SDRAM_nRAS (O_sdram_ras_n),
-        .SDRAM_nCAS (O_sdram_cas_n),
-        .SDRAM_CLK  (O_sdram_clk),
-        .SDRAM_CKE  (O_sdram_cke),
-        .SDRAM_DQM  (O_sdram_dqm)
+        .clk_sdram    (clk_sdram),
+        .SDRAM_DQ     (IO_sdram_dq),
+        .SDRAM_A      (O_sdram_addr),
+        .SDRAM_BA     (O_sdram_ba),
+        .SDRAM_nCS    (O_sdram_cs_n),
+        .SDRAM_nWE    (O_sdram_wen_n),
+        .SDRAM_nRAS   (O_sdram_ras_n),
+        .SDRAM_nCAS   (O_sdram_cas_n),
+        .SDRAM_CLK    (O_sdram_clk),
+        .SDRAM_CKE    (O_sdram_cke),
+        .SDRAM_DQM    (O_sdram_dqm)
     );
 
-// SDRAM 
-    logic clk_main;
-    logic clk_sdram;
-    logic pll_lock;
-
-    Gowin_rPLL pll_inst (
-        .clkout  (clk_main),
-        .clkoutp (clk_sdram),
-        .lock    (pll_lock),
-        .reset   (1'b0),
-        .clkin   (clk_27m)
-    );
-
-    
-
-    // Sticky LED: lights once the CPU's result register has been 12
+    // Sticky LED: lights once the CPU's result register has been 12.
     logic result_seen = 1'b0;
 
     always_ff @(posedge clk_main) begin

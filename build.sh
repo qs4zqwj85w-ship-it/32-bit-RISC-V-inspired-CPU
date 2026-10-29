@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# OSS CAD Suite's environment script may reference unset variables.
+set +u
 source "$HOME/tools/oss-cad-suite/environment"
+set -u
 
 rm -f cpu.json pnr.json cpu.fs
 
-# Explicit RTL allowlist. printf makes this one flat string
-# for the Yosys command parser.
-
+# Explicit RTL allowlist.
 FILES="$(printf '%s ' \
   './01_Register_File/register_file.sv' \
   './20_UART/uart_tx.sv' \
@@ -34,10 +35,8 @@ FILES="$(printf '%s ' \
   './21_CSR/machine_csrs.sv' \
   './22_M_Extension/m_extension.sv' \
   './22_M_Extension/m_division.sv' \
-  './23_SDRAM/sdram_adapter.sv' 
+  './23_SDRAM/sdram_adapter.sv' \
 )"
-
-
 
 echo "=== Synthesis ==="
 yosys -p "read_verilog ./23_SDRAM/gowin_rpll.v ./23_SDRAM/sdram.v; read_verilog -sv $FILES; synth_gowin -top cpu_fpga_top -json cpu.json" > synth.log 2>&1
