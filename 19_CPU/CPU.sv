@@ -9,7 +9,20 @@ module CPU #(
     output logic [31:0] result,
     output logic        uart_wr_en,
     output logic [7:0]  uart_wr_data,
-    input  logic        uart_busy
+    input  logic        uart_busy,
+
+// SDRAM expansion requires additional input and output since they are "leaving and entering the CPU and not just logic"
+    input  logic        clk_sdram,
+    inout  wire  [31:0] SDRAM_DQ,
+    output wire  [10:0] SDRAM_A,
+    output wire  [1:0]  SDRAM_BA,
+    output wire         SDRAM_nCS,
+    output wire         SDRAM_nWE,
+    output wire         SDRAM_nRAS,
+    output wire         SDRAM_nCAS,
+    output wire         SDRAM_CLK,
+    output wire         SDRAM_CKE,
+    output wire  [3:0]  SDRAM_DQM
 );
 
     // =====================================================
@@ -119,7 +132,6 @@ module CPU #(
     localparam logic [31:0] UART_STAT_ADDR = 32'h1000_0004;
 
     logic        mmio_sel;
-    logic        ram_write_enable;
     logic [31:0] ram_read_data;
     logic        stat_sel_q = 1'b0;
 
@@ -164,10 +176,17 @@ module CPU #(
     logic        div_done;
     logic        div_ready;
 
-
-
+    //SDRAM expansion
+    logic sdram_address_sel;
+    logic sdram_req;
+    logic [31:0] sdram_rdata;
+    logic bram_read_enable;
+    logic bram_write_enable;
+    
+    assign sdram_address_sel = (memory_address >= 32'h0000_1000) && (memory_address <= 32'h0080_0FFF);
     assign mmio_sel         = (memory_address[31:28] == 4'h1);
-    assign ram_write_enable = mem_write_enable && !mmio_sel;
+    assign bram_write_enable = mem_write_enable && !mmio_sel && !sdram_address_sel;
+    assign bram_read_enable = mem_read_enable && !mmio_sel && !sdram_address_sel;
     assign uart_wr_en       = mem_write_enable && (memory_address == UART_DATA_ADDR);
     assign uart_wr_data     = operand_b[7:0];
 
@@ -175,7 +194,15 @@ module CPU #(
         if (mem_read_enable)
             stat_sel_q <= (memory_address == UART_STAT_ADDR);
 
-    assign memory_read_data = stat_sel_q ? {31'b0, uart_busy} : ram_read_data;
+    always_comb begin
+        if (stat_sel_q)
+            memory_read_data = {31'b0, uart_busy};
+        else if (sdram_address_sel)
+            memory_read_data = sdram_rdata;
+        else
+            memory_read_data = ram_read_data;
+    end
+
 
     // =====================================================
     // 1. Program Counter
@@ -371,8 +398,8 @@ module CPU #(
         .clk(clk),
         .address(memory_address),
         .write_data_in(operand_b),
-        .read_enable(mem_read_enable),
-        .write_enable(ram_write_enable),
+        .read_enable(bram_read_enable),
+        .write_enable(bram_write_enable),
         .access_size(access_size),
         .load_unsigned(load_unsigned),
         .read_data_out(ram_read_data)
@@ -521,7 +548,11 @@ module CPU #(
         .is_div(is_div),
         .div_done(div_done),
         .div_ready(div_ready),
-        .div_start(div_start)
+        .div_start(div_start),
+
+        .sdram_address_sel(sdram_address_sel),
+        .sdram_req_ready(sdram_req_ready),
+        .sdram_done(sdram_done),
     );
 
     // =====================================================
@@ -595,7 +626,46 @@ module CPU #(
     );
 
     // =====================================================
-    // 21. Debug Result Monitor
+    // 21. SDRAM expansion
+    // =====================================================
+
+    assign sdram_req = sdram_address_sel && (mem_read_enable || mem_write_enable);
+
+    sdram_adapter #(
+        .FREQ_HZ   (27_000_000),
+        .SDRAM_BASE(32'h0000_1000)
+    ) sdram_adapter_inst (
+        // Clocks and reset
+        .clk          (clk),
+        .clk_sdram    (clk_sdram),
+        .reset        (reset),
+
+        // CPU-side interface
+        .req          (sdram_req),
+        .req_ready    (sdram_req_ready),
+        .we           (mem_write_enable),
+        .addr         (memory_address),
+        .wdata        (operand_b),
+        .access_size  (access_size),
+        .load_unsigned(load_unsigned),
+        .rdata        (sdram_rdata),
+        .done         (sdram_done),
+
+        // Physical SDRAM pins
+        .SDRAM_DQ     (SDRAM_DQ),
+        .SDRAM_A      (SDRAM_A),
+        .SDRAM_BA     (SDRAM_BA),
+        .SDRAM_nCS    (SDRAM_nCS),
+        .SDRAM_nWE    (SDRAM_nWE),
+        .SDRAM_nRAS   (SDRAM_nRAS),
+        .SDRAM_nCAS   (SDRAM_nCAS),
+        .SDRAM_CLK    (SDRAM_CLK),
+        .SDRAM_CKE    (SDRAM_CKE),
+        .SDRAM_DQM    (SDRAM_DQM)
+    );
+
+    // =====================================================
+    // Debug Result Monitor
     // =====================================================
 
     // Records the last value written to a nonzero

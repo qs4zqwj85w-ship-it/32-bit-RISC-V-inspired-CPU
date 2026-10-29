@@ -31,6 +31,11 @@ module control_fsm (
     input  logic div_done,
     input  logic div_ready,
 
+        // SDRAM handshake
+    input logic sdram_address_sel,
+    input logic sdram_req_ready,
+    input logic sdram_done,
+
 
     // PC and instruction fetch
     output logic pc_enable,
@@ -84,6 +89,7 @@ localparam logic [3:0] WRITEBACK   = 4'b0101;
 localparam logic [3:0] FETCH_WAIT  = 4'b0110;
 localparam logic [3:0] MEMORY_WAIT = 4'b0111;
 localparam logic [3:0] DIV_WAIT = 4'b1000;
+localparam logic [3:0] SDRAM_WAIT = 4'b1001;
 
 
 logic [3:0] state;
@@ -137,6 +143,10 @@ always_comb begin
 
     div_start = 1'b0;
 
+    sdram_address_sel = 1'b0;
+    sdram_req_ready = 1'b0;
+    sdram_done = 1'b0;
+
     case (state)
 
         // -----------------------------------------
@@ -147,32 +157,47 @@ always_comb begin
             mem_read_enable = 1'b1;
             access_size = 2'b10;       // Full word
 
-            // Synchronous RAM output becomes valid
-            // after the clock edge.
-            next_state = FETCH_WAIT;
+            if (sdram_address_sel && sdram_req_ready)
+                next_state = FETCH_WAIT;
+            else if (sdram_address_sel && !sdram_req_ready)
+                next_state = FETCH;
+            else 
+                // Synchronous RAM output becomes valid
+                // after the clock edge.
+                next_state = FETCH_WAIT;
         end
 
         // -----------------------------------------
         // FETCH_WAIT: Capture instruction and
         // increment PC by 4
+        // also with SDRAM expansion
         // -----------------------------------------
         FETCH_WAIT: begin
-            ir_write_enable = 1'b1;
+            mem_addr_sel = 1'b0;       // Keep selecting PC
 
-            // Save the instruction's original address
-            mar_write_enable = 1'b1;
-            mar_src_sel = 1'b0;        // PC
+            if (!sdram_address_sel || sdram_done) begin
+                ir_write_enable = 1'b1;
 
-            // ALU = PC + 4
-            alu_a_sel = 2'b00;         // PC
-            alu_b_sel = 2'b10;         // Constant 4
-            alu_ctrl = 4'd0;           // ADD
+                // Save the instruction's original address
+                mar_write_enable = 1'b1;
+                mar_src_sel = 1'b0;    // PC
 
-            alu_out_reg_write_enable = 1'b1;
-            pc_source_sel = 1'b0;      // ALU result
-            pc_enable = 1'b1;
+                // ALU = PC + 4
+                alu_a_sel = 2'b00;     // PC
+                alu_b_sel = 2'b10;     // Constant 4
+                alu_ctrl = 4'd0;       // ADD
 
-            next_state = DECODE;
+                alu_out_reg_write_enable = 1'b1;
+                pc_source_sel = 1'b0;  // ALU result
+                pc_enable = 1'b1;
+
+                next_state = DECODE;
+            end
+            else begin
+                // SDRAM instruction is not ready yet.
+                // Keep IR, MAR, and PC unchanged.
+                next_state = FETCH_WAIT;
+            end
         end
 
         // -----------------------------------------
@@ -355,8 +380,15 @@ always_comb begin
 
                 if ((load_type >= 3'b001) &&
                     (load_type <= 3'b101)) begin
+
                     mem_read_enable = 1'b1;
-                    next_state = MEMORY_WAIT;
+
+                    if (!sdram_address_sel)
+                        next_state = MEMORY_WAIT;
+                    else if (sdram_req_ready)
+                        next_state = MEMORY_WAIT;
+                    else
+                        next_state = MEMORY;
                 end
             end
 
@@ -375,7 +407,12 @@ always_comb begin
                     end
                 endcase
 
-                next_state = FETCH;
+                if (!sdram_address_sel)
+                    next_state = FETCH;
+                else if (sdram_req_ready)
+                    next_state = SDRAM_WAIT;
+                else
+                    next_state = MEMORY;
             end
 
             else begin
@@ -387,8 +424,15 @@ always_comb begin
         // MEMORY_WAIT: Capture synchronous RAM output
         // -----------------------------------------
         MEMORY_WAIT: begin
-            mdr_write_enable = 1'b1;
-            next_state = WRITEBACK;
+            mem_addr_sel = 1'b1;  // Keep selecting MAR
+
+            if (sdram_address_sel && !sdram_done) begin
+                next_state = MEMORY_WAIT;
+            end
+            else begin
+                mdr_write_enable = 1'b1;
+                next_state = WRITEBACK;
+            end
         end
 
         // -----------------------------------------
@@ -441,6 +485,18 @@ always_comb begin
                 next_state = WRITEBACK;
             end else begin
                 next_state = DIV_WAIT;
+            end
+        end
+        
+        SDRAM_WAIT: begin
+            mem_addr_sel = 1'b1;
+            mem_read_enable = 1'b0;
+            mem_write_enable = 1'b0;
+            if (sdram_done) begin
+                next_state = FETCH
+            end
+            else begin
+                next_state = SDRAM_WAIT
             end
         end
         
