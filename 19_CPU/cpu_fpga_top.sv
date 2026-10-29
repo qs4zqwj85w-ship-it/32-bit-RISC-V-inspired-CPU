@@ -20,13 +20,13 @@ module cpu_fpga_top (
     logic reset;
 
     always_ff @(posedge clk_main) begin
-        if (pll_lock) begin
+        if (!pll_lock)
             startup_counter <= 6'd0;
-        end 
-        else if (startup_counter != 6'd63) begin
+        else if (startup_counter != 6'd63)
             startup_counter <= startup_counter + 1'b1;
-        end
     end
+
+assign reset = !pll_lock || (startup_counter != 6'd63);
 
     assign reset = (startup_counter != 6'd63);
 

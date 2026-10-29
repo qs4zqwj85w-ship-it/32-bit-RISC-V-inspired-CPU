@@ -17,15 +17,6 @@ IO_PORT "uart_tx" IO_TYPE=LVCMOS33 PULL_MODE=UP;
 # Standalone SDRAM tester constraints for Tang Nano 20K.
 # Pin locations are from the open-source-toolchain SDRAM example.
 
-IO_LOC "clk_27m" 4;
-IO_PORT "clk_27m" IO_TYPE=LVCMOS33 PULL_MODE=NONE;
-CLOCK_LOC "clk_27m" BUFG;
-
-IO_LOC "led_n[0]" 15;
-IO_PORT "led_n[0]" PULL_MODE=UP DRIVE=8 IO_TYPE=LVCMOS33;
-IO_LOC "led_n[1]" 16;
-IO_PORT "led_n[1]" PULL_MODE=UP DRIVE=8 IO_TYPE=LVCMOS33;
-
 IO_LOC "O_sdram_clk" IOR11B;
 IO_PORT "O_sdram_clk" IO_TYPE=LVCMOS33 BANK_VCCIO=3.3;
 IO_LOC "O_sdram_cke" IOL13A;
