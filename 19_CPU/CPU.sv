@@ -554,7 +554,7 @@ module CPU #(
 
         .sdram_address_sel(sdram_address_sel),
         .sdram_req_ready(sdram_req_ready),
-        .sdram_done(sdram_done),
+        .sdram_done(sdram_done)
     );
 
     // =====================================================
