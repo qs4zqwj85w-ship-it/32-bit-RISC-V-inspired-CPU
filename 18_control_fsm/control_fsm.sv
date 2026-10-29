@@ -143,10 +143,6 @@ always_comb begin
 
     div_start = 1'b0;
 
-    sdram_address_sel = 1'b0;
-    sdram_req_ready = 1'b0;
-    sdram_done = 1'b0;
-
     case (state)
 
         // -----------------------------------------
@@ -493,10 +489,10 @@ always_comb begin
             mem_read_enable = 1'b0;
             mem_write_enable = 1'b0;
             if (sdram_done) begin
-                next_state = FETCH
+                next_state = FETCH;
             end
             else begin
-                next_state = SDRAM_WAIT
+                next_state = SDRAM_WAIT;
             end
         end
         

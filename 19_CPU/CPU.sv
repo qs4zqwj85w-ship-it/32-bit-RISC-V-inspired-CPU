@@ -182,6 +182,8 @@ module CPU #(
     logic [31:0] sdram_rdata;
     logic bram_read_enable;
     logic bram_write_enable;
+    logic sdram_req_ready;
+    logic sdram_done;
     
     assign sdram_address_sel = (memory_address >= 32'h0000_1000) && (memory_address <= 32'h0080_0FFF);
     assign mmio_sel         = (memory_address[31:28] == 4'h1);
