@@ -28,8 +28,6 @@ module cpu_fpga_top (
 
 assign reset = !pll_lock || (startup_counter != 6'd63);
 
-    assign reset = (startup_counter != 6'd63);
-
     // UART, driven by the CPU
     logic       cpu_uart_wr;
     logic [7:0] cpu_uart_data;
