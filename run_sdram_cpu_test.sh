@@ -3,17 +3,12 @@ set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
-
 SRC="$ROOT/software/sdram_cpu_test.c"
 OUT="$ROOT/.sdram-cpu-test-build"
 ORIGINAL_HEX="$OUT/original_program.hex"
 RESTORE_NEEDED=0
 
-fail() {
-    echo "ERROR: $*" >&2
-    exit 1
-}
-
+fail() { echo "ERROR: $*" >&2; exit 1; }
 restore_program_image() {
     if [[ "$RESTORE_NEEDED" == "1" && -s "$ORIGINAL_HEX" ]]; then
         cp "$ORIGINAL_HEX" "$ROOT/program.hex"
@@ -32,12 +27,11 @@ mkdir -p "$OUT"
 cp "$ROOT/program.hex" "$ORIGINAL_HEX"
 RESTORE_NEEDED=1
 
-# Same environment setup used by the existing project scripts.
 set +u
 source "$HOME/tools/oss-cad-suite/environment"
 set -u
 
-for tool in riscv64-elf-gcc riscv64-elf-as riscv64-elf-objcopy riscv64-elf-nm python3 yosys nextpnr-himbaechel gowin_pack openFPGALoader; do
+for tool in riscv64-elf-gcc riscv64-elf-as riscv64-elf-objcopy riscv64-elf-objdump riscv64-elf-nm python3 yosys nextpnr-himbaechel gowin_pack; do
     command -v "$tool" >/dev/null 2>&1 || fail "Cannot find '$tool'; check your toolchain/PATH."
 done
 
@@ -47,7 +41,6 @@ cat > "$OUT/start.S" <<'ASM'
 .globl _start
 .type _start,@function
 _start:
-    # Current 4 KiB BRAM stack grows down from address 0x1000.
     lui sp, 0x1
     la t0, __bss_start
     la t1, __bss_end
@@ -100,7 +93,6 @@ riscv64-elf-gcc \
     -fno-pic -fno-pie -msmall-data-limit=0 \
     -fno-asynchronous-unwind-tables -fno-unwind-tables \
     -S "$SRC" -o "$OUT/sdram_cpu_test.s"
-
 riscv64-elf-as -march=rv32i_zicsr -mabi=ilp32 -o "$OUT/start.o" "$OUT/start.S"
 riscv64-elf-as -march=rv32i_zicsr -mabi=ilp32 -o "$OUT/sdram_cpu_test.o" "$OUT/sdram_cpu_test.s"
 riscv64-elf-gcc \
@@ -117,57 +109,26 @@ IMAGE_END="$(riscv64-elf-nm -n "$OUT/sdram_cpu_test.elf" | awk '$3 == "__image_e
 python3 - "$OUT/sdram_cpu_test.bin" "$ROOT/program.hex" "$IMAGE_END" <<'PY'
 from pathlib import Path
 import sys
-
 binary_path = Path(sys.argv[1])
 hex_path = Path(sys.argv[2])
 image_end = int(sys.argv[3], 16)
-
-# Match the project's stack reservation: top 256 bytes of BRAM are reserved.
 if image_end > 0xF00:
-    raise SystemExit(
-        f"ERROR: SDRAM test firmware ends at 0x{image_end:X}; "
-        "must stay at or below 0xF00 to reserve BRAM stack space."
-    )
-
+    raise SystemExit(f"ERROR: image ends at 0x{image_end:X}; must be <= 0xF00 to reserve BRAM stack space.")
 data = binary_path.read_bytes()
 data += b"\x00" * ((-len(data)) % 4)
-words = [
-    f"{int.from_bytes(data[i:i+4], 'little'):08x}"
-    for i in range(0, len(data), 4)
-]
+words = [f"{int.from_bytes(data[i:i+4], 'little'):08x}" for i in range(0, len(data), 4)]
 if len(words) > 1024:
-    raise SystemExit(f"ERROR: test image has {len(words)} words; BRAM holds 1024.")
+    raise SystemExit(f"ERROR: image has {len(words)} words; BRAM holds 1024.")
 hex_path.write_text("\n".join(words) + "\n")
-print(f"Wrote {len(words)} test instruction words to program.hex (image end 0x{image_end:X}).")
+print(f"Wrote {len(words)} test words to program.hex (image end 0x{image_end:X}).")
 PY
 
-echo "=== Synthesize, place-and-route, package, and flash ==="
-bash "$ROOT/build.sh"
-
-# Keep the flashed FPGA running the test image, but restore the developer's
-# normal program.hex on disk so the test does not replace their usual firmware.
+echo "=== Build test bitstream only (no USB/JTAG access) ==="
+SKIP_FLASH=1 bash "$ROOT/build.sh"
 cp "$ORIGINAL_HEX" "$ROOT/program.hex"
 RESTORE_NEEDED=0
-echo "Restored original program.hex; FPGA is flashed with the SDRAM test firmware."
 
 echo
-echo "=== UART test output ==="
-PORT="${UART_PORT:-}"
-if [[ -z "$PORT" ]]; then
-    sleep 2
-    shopt -s nullglob
-    ports=(/dev/cu.usbserial-*)
-    shopt -u nullglob
-    if ((${#ports[@]} > 0)); then
-        PORT="${ports[0]}"
-    fi
-fi
-
-if [[ -n "$PORT" ]] && command -v screen >/dev/null 2>&1; then
-    echo "Opening $PORT at 115200 baud. Exit screen with Ctrl-A, then K, then Y."
-    exec screen "$PORT" 115200
-else
-    echo "Could not automatically open a serial monitor. Check the USB serial device, then run:"
-    echo "  screen /dev/cu.usbserial-XXXX 115200"
-    echo "Expected success text: ALL SDRAM CPU TESTS PASSED"
-fi
+echo "READY: cpu.fs now contains the SDRAM test firmware."
+echo "The original program.hex has been restored. Nothing was flashed."
+echo "Next, with all serial monitors CLOSED, run: ./flash_sdram_cpu_test.sh"

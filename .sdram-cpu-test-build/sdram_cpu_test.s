@@ -36,10 +36,28 @@ uart_puts:
 	call	uart_putc
 	j	.L5
 	.size	uart_puts, .-uart_puts
+	.align	2
+	.type	delay, @function
+delay:
+	addi	sp,sp,-16
+	li	a5,1998848
+	sw	zero,12(sp)
+	addi	a5,a5,1151
+.L9:
+	lw	a4,12(sp)
+	bleu	a4,a5,.L10
+	addi	sp,sp,16
+	jr	ra
+.L10:
+	lw	a4,12(sp)
+	addi	a4,a4,1
+	sw	a4,12(sp)
+	j	.L9
+	.size	delay, .-delay
 	.section	.rodata.str1.4,"aMS",@progbits,1
 	.align	2
 .LC0:
-	.string	"FAIL: "
+	.string	"\r\nFAIL: "
 	.align	2
 .LC1:
 	.string	"\r\n"
@@ -48,19 +66,24 @@ uart_puts:
 	.type	fail, @function
 fail:
 	addi	sp,sp,-16
+	lui	a5,%hi(.LC0)
 	sw	s0,8(sp)
-	mv	s0,a0
-	lui	a0,%hi(.LC0)
-	addi	a0,a0,%lo(.LC0)
+	addi	s0,a5,%lo(.LC0)
+	lui	a5,%hi(.LC1)
+	sw	s1,4(sp)
+	sw	s2,0(sp)
 	sw	ra,12(sp)
-	call	uart_puts
+	mv	s2,a0
+	addi	s1,a5,%lo(.LC1)
+.L13:
 	mv	a0,s0
 	call	uart_puts
-	lui	a0,%hi(.LC1)
-	addi	a0,a0,%lo(.LC1)
+	mv	a0,s2
 	call	uart_puts
-.L9:
-	j	.L9
+	mv	a0,s1
+	call	uart_puts
+	call	delay
+	j	.L13
 	.size	fail, .-fail
 	.section	.rodata.str1.4
 	.align	2
@@ -89,16 +112,16 @@ pass:
 	.section	.rodata.str1.4
 	.align	2
 .LC3:
-	.string	"\r\nCPU SDRAM TEST START\r\n"
+	.string	"CPU TEST IMAGE RUNNING; SDRAM access has not started yet\r\n"
 	.align	2
 .LC4:
-	.string	"Program is running from BRAM; test data uses SDRAM.\r\n"
+	.string	"TEST 1: about to write/read word at 0x00001000\r\n"
 	.align	2
 .LC5:
 	.string	"word read/write at 0x00001000"
 	.align	2
 .LC6:
-	.string	"word read/write"
+	.string	"TEST 2: second word address\r\n"
 	.align	2
 .LC7:
 	.string	"second word address/pattern"
@@ -107,93 +130,128 @@ pass:
 	.string	"different word address"
 	.align	2
 .LC9:
-	.string	"byte read/write"
+	.string	"TEST 3: byte access and lane preservation\r\n"
 	.align	2
 .LC10:
-	.string	"byte store changed neighboring lanes"
+	.string	"byte read/write"
 	.align	2
 .LC11:
-	.string	"byte access and lane preservation"
+	.string	"byte store changed neighboring lanes"
 	.align	2
 .LC12:
-	.string	"halfword read/write"
+	.string	"byte access and lane preservation"
 	.align	2
 .LC13:
-	.string	"halfword store changed neighboring lanes"
+	.string	"TEST 4: halfword access and lane preservation\r\n"
 	.align	2
 .LC14:
-	.string	"halfword access and lane preservation"
+	.string	"halfword read/write"
 	.align	2
 .LC15:
-	.string	"unsigned byte load"
+	.string	"halfword store changed neighboring lanes"
 	.align	2
 .LC16:
-	.string	"signed byte extension"
+	.string	"halfword access and lane preservation"
 	.align	2
 .LC17:
-	.string	"signed/unsigned byte loads"
+	.string	"TEST 5: signed/unsigned byte loads\r\n"
 	.align	2
 .LC18:
-	.string	"unsigned halfword load"
+	.string	"unsigned byte load"
 	.align	2
 .LC19:
-	.string	"signed halfword extension"
+	.string	"signed byte extension"
 	.align	2
 .LC20:
-	.string	"upper halfword byte lanes"
+	.string	"signed/unsigned byte loads"
 	.align	2
 .LC21:
-	.string	"signed/unsigned halfword loads"
+	.string	"TEST 6: signed/unsigned halfword loads\r\n"
 	.align	2
 .LC22:
-	.string	"address range/alias test"
+	.string	"unsigned halfword load"
 	.align	2
 .LC23:
-	.string	"separate addresses, including last SDRAM word"
+	.string	"signed halfword extension"
 	.align	2
 .LC24:
+	.string	"upper halfword byte lanes"
+	.align	2
+.LC25:
+	.string	"signed/unsigned halfword loads"
+	.align	2
+.LC26:
+	.string	"TEST 7: far addresses and final SDRAM word\r\n"
+	.align	2
+.LC27:
+	.string	"address range/alias test"
+	.align	2
+.LC28:
+	.string	"separate addresses, including last SDRAM word"
+	.align	2
+.LC29:
 	.string	"ALL SDRAM CPU TESTS PASSED\r\n"
 	.section	.text.startup,"ax",@progbits
 	.align	2
 	.globl	main
 	.type	main, @function
 main:
-	lui	a0,%hi(.LC3)
 	addi	sp,sp,-32
-	addi	a0,a0,%lo(.LC3)
-	sw	ra,28(sp)
 	sw	s0,24(sp)
-	call	uart_puts
+	lui	s0,%hi(.LC3)
+	sw	s1,20(sp)
+	sw	ra,28(sp)
+	sw	zero,12(sp)
+	li	s1,39
+	addi	s0,s0,%lo(.LC3)
+.L18:
+	lw	a5,12(sp)
+	bleu	a5,s1,.L19
 	lui	a0,%hi(.LC4)
 	addi	a0,a0,%lo(.LC4)
 	call	uart_puts
+	call	delay
 	li	a5,305418240
 	li	a4,4096
 	addi	a5,a5,1656
 	sw	a5,0(a4)
 	lw	a4,0(a4)
-	beq	a4,a5,.L14
 	lui	a0,%hi(.LC5)
 	addi	a0,a0,%lo(.LC5)
-.L31:
+	beq	a4,a5,.L20
+.L35:
 	call	fail
-.L14:
+.L19:
+	mv	a0,s0
+	call	uart_puts
+	call	delay
+	lw	a5,12(sp)
+	addi	a5,a5,1
+	sw	a5,12(sp)
+	j	.L18
+.L20:
+	call	pass
 	lui	a0,%hi(.LC6)
 	addi	a0,a0,%lo(.LC6)
-	call	pass
+	call	uart_puts
+	call	delay
 	li	a5,-1985228800
 	li	a4,4096
 	addi	a5,a5,-529
 	sw	a5,4(a4)
 	lw	a4,4(a4)
-	beq	a4,a5,.L15
+	beq	a4,a5,.L21
 	lui	a0,%hi(.LC7)
 	addi	a0,a0,%lo(.LC7)
-	j	.L31
-.L15:
+	j	.L35
+.L21:
 	lui	a0,%hi(.LC8)
 	addi	a0,a0,%lo(.LC8)
 	call	pass
+	lui	a0,%hi(.LC9)
+	addi	a0,a0,%lo(.LC9)
+	call	uart_puts
+	call	delay
 	li	a5,4096
 	li	s0,287453184
 	addi	a5,a5,8
@@ -204,22 +262,26 @@ main:
 	sb	a3,9(a4)
 	lbu	a3,9(a4)
 	li	a4,165
-	beq	a3,a4,.L16
-	lui	a0,%hi(.LC9)
-	addi	a0,a0,%lo(.LC9)
-	j	.L31
-.L16:
+	beq	a3,a4,.L22
+	lui	a0,%hi(.LC10)
+	addi	a0,a0,%lo(.LC10)
+	j	.L35
+.L22:
 	lw	a4,0(a5)
 	li	a5,287481856
 	addi	a5,a5,1348
-	beq	a4,a5,.L17
-	lui	a0,%hi(.LC10)
-	addi	a0,a0,%lo(.LC10)
-	j	.L31
-.L17:
+	beq	a4,a5,.L23
 	lui	a0,%hi(.LC11)
 	addi	a0,a0,%lo(.LC11)
+	j	.L35
+.L23:
+	lui	a0,%hi(.LC12)
+	addi	a0,a0,%lo(.LC12)
 	call	pass
+	lui	a0,%hi(.LC13)
+	addi	a0,a0,%lo(.LC13)
+	call	uart_puts
+	call	delay
 	li	a5,4096
 	li	a3,-16384
 	li	a4,4096
@@ -230,22 +292,26 @@ main:
 	li	a4,49152
 	addi	a4,a4,-273
 	addi	a5,a5,12
-	beq	a3,a4,.L18
-	lui	a0,%hi(.LC12)
-	addi	a0,a0,%lo(.LC12)
-	j	.L31
-.L18:
+	beq	a3,a4,.L24
+	lui	a0,%hi(.LC14)
+	addi	a0,a0,%lo(.LC14)
+	j	.L35
+.L24:
 	lw	a4,0(a5)
 	li	a5,-1091620864
 	addi	a5,a5,836
-	beq	a4,a5,.L19
-	lui	a0,%hi(.LC13)
-	addi	a0,a0,%lo(.LC13)
-	j	.L31
-.L19:
-	lui	a0,%hi(.LC14)
-	addi	a0,a0,%lo(.LC14)
+	beq	a4,a5,.L25
+	lui	a0,%hi(.LC15)
+	addi	a0,a0,%lo(.LC15)
+	j	.L35
+.L25:
+	lui	a0,%hi(.LC16)
+	addi	a0,a0,%lo(.LC16)
 	call	pass
+	lui	a0,%hi(.LC17)
+	addi	a0,a0,%lo(.LC17)
+	call	uart_puts
+	call	delay
 	li	a5,4096
 	sw	zero,24(a5)
 	li	a4,-128
@@ -253,53 +319,59 @@ main:
 	lbu	a2,24(a5)
 	li	a3,128
 	addi	a5,a5,24
-	beq	a2,a3,.L20
-	lui	a0,%hi(.LC15)
-	addi	a0,a0,%lo(.LC15)
-	j	.L31
-.L20:
-	lb	a5,0(a5)
-	beq	a5,a4,.L21
-	lui	a0,%hi(.LC16)
-	addi	a0,a0,%lo(.LC16)
-	j	.L31
-.L21:
-	lui	a0,%hi(.LC17)
-	addi	a0,a0,%lo(.LC17)
-	call	pass
-	li	a4,4096
-	li	a5,4096
-	li	a3,-32768
-	addi	a5,a5,30
-	sw	zero,28(a4)
-	addi	a3,a3,1
-	sh	a3,0(a5)
-	lhu	a1,0(a5)
-	li	a2,32768
-	addi	a2,a2,1
-	addi	a4,a4,28
-	beq	a1,a2,.L22
+	beq	a2,a3,.L26
 	lui	a0,%hi(.LC18)
 	addi	a0,a0,%lo(.LC18)
-	j	.L31
-.L22:
-	lh	a5,0(a5)
-	beq	a5,a3,.L23
+	j	.L35
+.L26:
+	lb	a5,0(a5)
+	beq	a5,a4,.L27
 	lui	a0,%hi(.LC19)
 	addi	a0,a0,%lo(.LC19)
-	j	.L31
-.L23:
-	lw	a4,0(a4)
-	li	a5,-2147418112
-	li	s0,4096
-	beq	a4,a5,.L24
+	j	.L35
+.L27:
 	lui	a0,%hi(.LC20)
 	addi	a0,a0,%lo(.LC20)
-	j	.L31
-.L24:
+	call	pass
 	lui	a0,%hi(.LC21)
 	addi	a0,a0,%lo(.LC21)
+	call	uart_puts
+	call	delay
+	li	a5,4096
+	li	a4,-32768
+	sw	zero,28(a5)
+	addi	a4,a4,1
+	sh	a4,30(a5)
+	lhu	a2,30(a5)
+	li	a3,32768
+	addi	a3,a3,1
+	beq	a2,a3,.L28
+	lui	a0,%hi(.LC22)
+	addi	a0,a0,%lo(.LC22)
+	j	.L35
+.L28:
+	lh	a5,30(a5)
+	li	s0,4096
+	beq	a5,a4,.L29
+	lui	a0,%hi(.LC23)
+	addi	a0,a0,%lo(.LC23)
+	j	.L35
+.L29:
+	li	a5,4096
+	lw	a4,28(a5)
+	li	a5,-2147418112
+	beq	a4,a5,.L30
+	lui	a0,%hi(.LC24)
+	addi	a0,a0,%lo(.LC24)
+	j	.L35
+.L30:
+	lui	a0,%hi(.LC25)
+	addi	a0,a0,%lo(.LC25)
 	call	pass
+	lui	a0,%hi(.LC26)
+	addi	a0,a0,%lo(.LC26)
+	call	uart_puts
+	call	delay
 	li	a1,168431616
 	addi	a1,a1,-1526
 	li	a2,454762496
@@ -316,37 +388,28 @@ main:
 	addi	a5,a5,-707
 	sw	a5,-4(a4)
 	lw	a7,0(s0)
-	bne	a7,a1,.L25
+	bne	a7,a1,.L31
 	lw	a1,0(a6)
-	bne	a1,a2,.L25
+	bne	a1,a2,.L31
 	lw	a2,0(a0)
-	bne	a2,a3,.L25
+	bne	a2,a3,.L31
 	lw	a4,-4(a4)
-	beq	a4,a5,.L26
-.L25:
-	lui	a0,%hi(.LC22)
-	addi	a0,a0,%lo(.LC22)
-	j	.L31
-.L26:
-	lui	a0,%hi(.LC23)
-	addi	a0,a0,%lo(.LC23)
+	beq	a4,a5,.L32
+.L31:
+	lui	a0,%hi(.LC27)
+	addi	a0,a0,%lo(.LC27)
+	j	.L35
+.L32:
+	lui	a0,%hi(.LC28)
+	addi	a0,a0,%lo(.LC28)
+	lui	s0,%hi(.LC29)
 	call	pass
-	lui	a0,%hi(.LC24)
-	li	s0,499712
-	addi	a0,a0,%lo(.LC24)
-	addi	s0,s0,287
-.L29:
+	addi	s0,s0,%lo(.LC29)
+.L33:
+	mv	a0,s0
 	call	uart_puts
-	lui	a5,%hi(.LC24)
-	sw	zero,12(sp)
-	addi	a0,a5,%lo(.LC24)
-.L27:
-	lw	a5,12(sp)
-	bgtu	a5,s0,.L29
-	lw	a5,12(sp)
-	addi	a5,a5,1
-	sw	a5,12(sp)
-	j	.L27
+	call	delay
+	j	.L33
 	.size	main, .-main
 	.ident	"GCC: (GNU) 16.2.0"
 	.section	.note.GNU-stack,"",@progbits

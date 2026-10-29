@@ -51,10 +51,12 @@ nextpnr-himbaechel \
 
 echo "=== Pack bitstream ==="
 gowin_pack -d GW2A-18C -o cpu.fs pnr.json
-
 test -s cpu.fs
 
-echo "=== Flash Tang Nano 20K ==="
-openFPGALoader -b tangnano20k cpu.fs
-
-echo "Build and programming complete."
+if [[ "${SKIP_FLASH:-0}" == "1" ]]; then
+    echo "SKIP_FLASH=1: bitstream built but NOT flashed."
+else
+    echo "=== Flash Tang Nano 20K ==="
+    openFPGALoader -b tangnano20k cpu.fs
+    echo "Build and programming complete."
+fi

@@ -1,7 +1,7 @@
 /*
- * CPU-side SDRAM integration test.
- * The test program itself executes from BRAM. It checks SDRAM loads/stores
- * through the CPU address decoder and sdram_adapter, then reports on UART.
+ * CPU-side SDRAM integration diagnostic.
+ * The program image executes from BRAM; the tested data lives in SDRAM.
+ * UART busy polling is intentionally unchanged from the working firmware.
  */
 #include <stdint.h>
 
@@ -23,12 +23,21 @@ static void uart_puts(const char *s)
         uart_putc(*s++);
 }
 
+/* Volatile loop counter keeps the delay present in the generated firmware. */
+static void delay(void)
+{
+    for (volatile uint32_t ticks = 0; ticks < 2000000u; ticks++) {
+    }
+}
+
 static void fail(const char *message)
 {
-    uart_puts("FAIL: ");
-    uart_puts(message);
-    uart_puts("\r\n");
-    for (;;) { }
+    for (;;) {
+        uart_puts("\r\nFAIL: ");
+        uart_puts(message);
+        uart_puts("\r\n");
+        delay();
+    }
 }
 
 static void pass(const char *message)
@@ -51,22 +60,29 @@ int main(void)
     volatile uint32_t *p2;
     volatile uint32_t *plast;
 
-    uart_puts("\r\nCPU SDRAM TEST START\r\n");
-    uart_puts("Program is running from BRAM; test data uses SDRAM.\r\n");
+    /* The script does not open screen. Repeat this heartbeat for ~30 seconds
+       to give the user time to open the serial monitor after programming. */
+    for (volatile uint32_t repeat = 0; repeat < 40u; repeat++) {
+        uart_puts("CPU TEST IMAGE RUNNING; SDRAM access has not started yet\r\n");
+        delay();
+    }
 
-    // Word access at the base.
+    uart_puts("TEST 1: about to write/read word at 0x00001000\r\n");
+    delay();
     words[0] = 0x12345678u;
     if (words[0] != 0x12345678u)
         fail("word read/write at 0x00001000");
-    pass("word read/write");
+    pass("word read/write at 0x00001000");
 
-    // Word access at a separate location.
+    uart_puts("TEST 2: second word address\r\n");
+    delay();
     words[1] = 0x89ABCDEFu;
     if (words[1] != 0x89ABCDEFu)
         fail("second word address/pattern");
     pass("different word address");
 
-    // Byte store, byte load, and preservation of the other byte lanes.
+    uart_puts("TEST 3: byte access and lane preservation\r\n");
+    delay();
     words[2] = 0x11223344u;
     bytes = (volatile uint8_t *)(SDRAM_BASE + 8u);
     bytes[1] = 0xA5u;
@@ -76,7 +92,8 @@ int main(void)
         fail("byte store changed neighboring lanes");
     pass("byte access and lane preservation");
 
-    // Halfword store in the upper half of a word.
+    uart_puts("TEST 4: halfword access and lane preservation\r\n");
+    delay();
     words[3] = 0x11223344u;
     u16 = (volatile uint16_t *)(SDRAM_BASE + 14u);
     *u16 = 0xBEEFu;
@@ -86,7 +103,8 @@ int main(void)
         fail("halfword store changed neighboring lanes");
     pass("halfword access and lane preservation");
 
-    // Signed and unsigned byte loads.
+    uart_puts("TEST 5: signed/unsigned byte loads\r\n");
+    delay();
     words[6] = 0u;
     u8 = (volatile uint8_t *)(SDRAM_BASE + 24u);
     s8 = (volatile int8_t *)(SDRAM_BASE + 24u);
@@ -97,7 +115,8 @@ int main(void)
         fail("signed byte extension");
     pass("signed/unsigned byte loads");
 
-    // Signed and unsigned halfword loads.
+    uart_puts("TEST 6: signed/unsigned halfword loads\r\n");
+    delay();
     words[7] = 0u;
     u16 = (volatile uint16_t *)(SDRAM_BASE + 30u);
     s16 = (volatile int16_t *)(SDRAM_BASE + 30u);
@@ -110,18 +129,16 @@ int main(void)
         fail("upper halfword byte lanes");
     pass("signed/unsigned halfword loads");
 
-    // Check that far-apart addresses do not alias and that the end of the
-    // declared 8 MiB SDRAM window is decoded correctly.
+    uart_puts("TEST 7: far addresses and final SDRAM word\r\n");
+    delay();
     p0 = (volatile uint32_t *)0x00001000u;
     p1 = (volatile uint32_t *)0x00002000u;
     p2 = (volatile uint32_t *)0x00010000u;
     plast = (volatile uint32_t *)0x00800FFCu;
-
     *p0 = 0x0A0A0A0Au;
     *p1 = 0x1B1B1B1Bu;
     *p2 = 0x2C2C2C2Cu;
     *plast = 0x3D3D3D3Du;
-
     if (*p0 != 0x0A0A0A0Au ||
         *p1 != 0x1B1B1B1Bu ||
         *p2 != 0x2C2C2C2Cu ||
@@ -129,14 +146,8 @@ int main(void)
         fail("address range/alias test");
     pass("separate addresses, including last SDRAM word");
 
-        // Repeat PASS so it remains visible in the UART terminal.
     for (;;) {
         uart_puts("ALL SDRAM CPU TESTS PASSED\r\n");
-
-        // Delay between messages to avoid flooding the terminal.
-        for (volatile uint32_t delay = 0;
-             delay < 500000u;
-             delay++) {
-        }
+        delay();
     }
 }
