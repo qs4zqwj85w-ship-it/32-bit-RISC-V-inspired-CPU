@@ -9,7 +9,7 @@ cd "$ROOT"
    source "$HOME/tools/oss-cad-suite/environment"
    set -u
 
-SRC="$ROOT/software/main.c"
+SRC="$ROOT/software/sdram_life_optimized_nopoll.c"
 OUT="$ROOT/.c-build"
 
 die() {
@@ -187,6 +187,10 @@ PY
 echo
 echo "=== 4/4: Build FPGA bitstream and flash board ==="
 
+# Close old serial monitors BEFORE openFPGALoader claims the USB device.
+killall screen 2>/dev/null || true
+sleep 1
+
 bash "$ROOT/build.sh"
 
 [[ -s "$ROOT/cpu.fs" ]] ||
@@ -205,6 +209,5 @@ if [[ -z "$PORT" ]]; then
 fi
 [[ -n "$PORT" ]] || die "No /dev/cu.usbserial-* port found."
 
-killall screen 2>/dev/null || true
 echo "Opening $PORT at 115200 (exit: Ctrl-A, then K, then Y)"
 exec screen "$PORT" 115200
