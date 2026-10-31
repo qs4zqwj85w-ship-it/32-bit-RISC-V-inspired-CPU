@@ -13,6 +13,12 @@ module cpu_fpga_top (
     output wire [10:0] O_sdram_addr,
     output wire [1:0] O_sdram_ba,
     output wire [3:0] O_sdram_dqm
+
+    // HDMI TMDS outputs
+    output logic hdmi_data0,
+    output logic hdmi_data1,
+    output logic hdmi_data2,
+    output logic hdmi_clk
 );
 
     // PLL-generated clocks
@@ -76,6 +82,55 @@ module cpu_fpga_top (
         .SDRAM_CLK    (O_sdram_clk),
         .SDRAM_CKE    (O_sdram_cke),
         .SDRAM_DQM    (O_sdram_dqm)
+    );
+
+    // ============================================================
+    // HDMI subsystem
+    // ============================================================
+
+    // HDMI clocks
+    logic clk_135m;
+    logic hdmi_pll_locked;
+    logic hdmi_reset;
+
+    // Generate 135 MHz serializer clock from the board's 27 MHz clock.
+    gowin_hdmi_pll hdmi_pll_inst (
+        .clk_27m (clk_27m),
+        .reset   (1'b0),
+        .clk_135m(clk_135m),
+        .locked  (hdmi_pll_locked)
+    );
+
+    // Keep video logic in reset until the HDMI PLL locks.
+    assign hdmi_reset = !hdmi_pll_locked;
+
+    // TMDS-encoded video data
+    logic [9:0] tmds_red;
+    logic [9:0] tmds_green;
+    logic [9:0] tmds_blue;
+
+    tmds_video_core video_inst (
+        .clk_pixel  (clk_27m),
+        .rst        (hdmi_reset),
+        .tmds_red   (tmds_red),
+        .tmds_green (tmds_green),
+        .tmds_blue  (tmds_blue)
+    );
+
+    // Serialize the three TMDS channels.
+    tmds_serializer serializer_inst (
+        .clk_pixel    (clk_27m),
+        .clk_pixel_x5 (clk_135m),
+        .rst          (hdmi_reset),
+
+        .tmds_red   (tmds_red),
+        .tmds_green (tmds_green),
+        .tmds_blue  (tmds_blue),
+
+        .serial_red   (hdmi_data2),
+        .serial_green (hdmi_data1),
+        .serial_blue  (hdmi_data0),
+        .tmds_clock   (hdmi_clk)
     );
 
     // Sticky LED: lights once the CPU's result register has been 12.

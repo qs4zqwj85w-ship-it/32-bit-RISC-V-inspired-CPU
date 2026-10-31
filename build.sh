@@ -36,6 +36,13 @@ FILES="$(printf '%s ' \
   './22_M_Extension/m_extension.sv' \
   './22_M_Extension/m_division.sv' \
   './23_SDRAM/sdram_adapter.sv' \
+  '24_HDMI/gowin_hdmi_pll.sv' \
+  '24_HDMI/video_timing.sv' \
+  '24_HDMI/video_pattern.sv' \
+  '24_HDMI/video_core.sv' \
+  '24_HDMI/tmds_encoder.sv' \
+  '24_HDMI/tmds_video_core.sv' \
+  '24_HDMI/serializer.sv'
 )"
 
 echo "=== Synthesis ==="
