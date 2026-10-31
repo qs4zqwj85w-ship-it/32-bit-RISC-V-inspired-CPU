@@ -12,13 +12,17 @@ module cpu_fpga_top (
     inout  wire [31:0] IO_sdram_dq,
     output wire [10:0] O_sdram_addr,
     output wire [1:0] O_sdram_ba,
-    output wire [3:0] O_sdram_dqm
+    output wire [3:0] O_sdram_dqm,
 
-    // HDMI TMDS outputs
-    output logic hdmi_data0,
-    output logic hdmi_data1,
-    output logic hdmi_data2,
-    output logic hdmi_clk
+    // HDMI TMDS outputs (with diffrential implementation)
+    output wire hdmi_data0_p,
+    output wire hdmi_data0_n,
+    output wire hdmi_data1_p,
+    output wire hdmi_data1_n,
+    output wire hdmi_data2_p,
+    output wire hdmi_data2_n,
+    output wire hdmi_clk_p,
+    output wire hdmi_clk_n
 );
 
     // PLL-generated clocks
@@ -117,6 +121,11 @@ module cpu_fpga_top (
         .tmds_blue  (tmds_blue)
     );
 
+    wire serial_red;
+    wire serial_green;
+    wire serial_blue;
+    wire tmds_clock;
+
     // Serialize the three TMDS channels.
     tmds_serializer serializer_inst (
         .clk_pixel    (clk_27m),
@@ -127,10 +136,34 @@ module cpu_fpga_top (
         .tmds_green (tmds_green),
         .tmds_blue  (tmds_blue),
 
-        .serial_red   (hdmi_data2),
-        .serial_green (hdmi_data1),
-        .serial_blue  (hdmi_data0),
-        .tmds_clock   (hdmi_clk)
+        .serial_red   (serial_red),
+        .serial_green (serial_green),
+        .serial_blue  (serial_blue),
+        .tmds_clock   (tmds_clock)
+    );
+
+    differential_output hdmi_data0_diff (
+        .signal_in (serial_blue),
+        .signal_p  (hdmi_data0_p),
+        .signal_n  (hdmi_data0_n)
+    );
+
+    differential_output hdmi_data1_diff (
+        .signal_in (serial_green),
+        .signal_p  (hdmi_data1_p),
+        .signal_n  (hdmi_data1_n)
+    );
+
+    differential_output hdmi_data2_diff (
+        .signal_in (serial_red),
+        .signal_p  (hdmi_data2_p),
+        .signal_n  (hdmi_data2_n)
+    );
+
+    differential_output hdmi_clock_diff (
+        .signal_in (tmds_clock),
+        .signal_p  (hdmi_clk_p),
+        .signal_n  (hdmi_clk_n)
     );
 
     // Sticky LED: lights once the CPU's result register has been 12.
