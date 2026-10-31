@@ -7,11 +7,11 @@ module video_core (
 
     output logic [7:0] red,
     output logic [7:0] green,
-    output logic [7:0] blue
+    output logic [7:0] blue,
+    output logic active_video
 );
 logic [9:0] pixel_x;
 logic [9:0] pixel_y;
-logic       active_video;
 
 video_timing video_timing_inst (
     .clk_pixel   (clk_pixel),
