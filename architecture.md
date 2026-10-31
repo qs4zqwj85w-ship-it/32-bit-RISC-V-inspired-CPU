@@ -49,11 +49,13 @@ The exact control signals and transitions are defined in `18_control_fsm/control
 
 ## Shared on-chip memory
 
-The current memory module, `06_memory/memory_subword.sv`, implements **4 KiB** of synchronous RAM as 1024 words of 32 bits. Instructions and data share this memory image. It supports byte, halfword, and word stores, plus signed and unsigned byte/halfword loads and word loads.
+The on-chip memory module, `06_memory/memory_subword.sv`, implements **4 KiB** of synchronous BRAM as 1024 words of 32 bits. Instructions and data share this memory image. It supports byte, halfword, and word stores, plus signed and unsigned byte/halfword loads and word loads. The firmware image is initialized through `program.hex` at build time.
 
-Because the RAM has a synchronous read interface, instruction fetch is split across `FETCH` and `FETCH_WAIT`. Loads similarly use dedicated memory states to accommodate the read timing. The firmware image is provided through `program.hex` at build time.
+The CPU also has an external SDRAM path through `23_SDRAM/sdram_adapter.sv`. The CPU decodes addresses `0x00001000–0x00800FFF` as SDRAM, giving an 8 MiB window immediately above the 4 KiB BRAM region. The adapter subtracts the SDRAM base before passing the offset to the low-level controller. BRAM remains the low-address memory and holds the initial program image; SDRAM extends addressable memory for larger programs and data.
 
-The current design uses on-chip RAM. External SDRAM is a future expansion, not part of the current CPU memory path.
+The controller accepts byte writes, so the adapter splits halfword and word stores into two and four byte operations. Reads return a 32-bit controller word; the adapter shifts and sign- or zero-extends byte/halfword results to match CPU load behavior. Naturally aligned halfword and word stores are supported; misaligned SH/SW stores are suppressed, matching the BRAM module. The adapter buffers one CPU request and provides req_ready/done handshaking. It also schedules periodic refresh requests at approximately 15 μs intervals for the 27 MHz system clock.
+
+The low-level `sdram.v` controller is based on the public Tang Nano 20K SDRAM controller by [nand2mario](https://github.com/nand2mario/sdram-tang-nano-20k), also used by NESTang. The controller source is retained rather than rewritten; the project-specific work is the CPU-facing adapter, address decode, byte-lane handling, and integration. The open-source-toolchain port used as a reference is [Seyviour's fork](https://github.com/Seyviour/sdram-tang-nano-20k-os-example), which identifies itself as a fork of the original design. See [SDRAM adapter notes](23_SDRAM/SDRAM_ADAPTER_NOTES.md) for details.
 
 ## Memory-mapped UART
 
@@ -83,9 +85,34 @@ The M extension is split into two modules:
 
 The multiplier is combinational in the current RTL, while division/remainder takes multiple cycles. The divider is integrated into the CPU, but signed/unsigned edge cases and broader CPU-level behavior remain under verification.
 
+## Video output (HDMI connector, DVI-compatible TMDS)
+
+The video subsystem in 24_HDMI/ is integrated into 19_CPU/cpu_fpga_top.sv. It is currently a standalone test-pattern generator; it is **not yet connected to CPU memory, SDRAM, or a framebuffer**.
+
+### Timing and test pattern
+
+- 720×480 active pixels; horizontal total 858 pixel clocks and vertical total 525 lines.
+- 27 MHz pixel clock, approximately 59.94 frames per second.
+- Horizontal sync is low over pixel counts 736–797; vertical sync is low over lines 489–494.
+- The active image is split into three vertical regions: red, green, and blue. The bars were deliberately chosen as a simple pattern to prove that all three color channels are being driven.
+
+The initial choice of 480-line video was partly motivated by the thought that **“I thought flappy bird with 480 be kinda sick.”** It was a practical starting resolution rather than a final display target.
+
+### Encoding and clocks
+
+video_timing.sv generates pixel coordinates, sync, and active-video signals. video_pattern.sv generates RGB values, with black during blanking. Three instances of tmds_encoder.sv encode red, green, and blue into 10-bit TMDS symbols; the blue channel also carries horizontal and vertical control symbols during blanking.
+
+The board's 27 MHz clock drives pixel timing and TMDS encoding. A separate gowin_hdmi_pll.sv instance generates a nominal 135 MHz (5× pixel clock) serializer clock for the three Gowin OSER10 primitives in serializer.sv. Serialized blue, green, and red are mapped to TMDS data lanes 0, 1, and 2. A fourth differential output carries the pixel clock. The output wrapper currently instantiates Gowin TLVDS_OBUF.
+
+The connector is HDMI-shaped but the current design sends DVI-compatible TMDS video only; there is no HDMI audio or InfoFrame implementation. The top-level HDMI pins are constrained to the Tang Nano 20K DVI/TMDS pairs: clock 33/34, data0 35/36, data1 37/38, and data2 39/40, corresponding to the [Sipeed Tang Nano 20K schematic, revision 3921](https://dl.sipeed.com/fileList/TANG/Nano_20K/2_Schematic/Tang_Nano_20K_3921_Schematics.pdf).
+
+### Current verification status
+
+The full design passed synthesis, place-and-route, bitstream packing, and programming through openFPGALoader. The programming log reported JTAG at 6 MHz, SRAM loading at 100%, and DONE. **The HDMI output is successfully built and programmed, but physical output has not been tested** because no monitor was available. A successful FPGA build does not establish that a monitor locks to the signal or that serializer bit order, phase, and electrical output are correct; those remain hardware-verification tasks.
+
 ## FPGA and firmware flow
 
-The FPGA top-level module receives the board's 27 MHz clock. It generates a startup reset, instantiates the CPU and UART transmitter, and drives an active-low LED as a sticky debug indicator when the CPU result monitor observes the value 12.
+The FPGA top-level receives the board's 27 MHz clock. The existing CPU/SDRAM PLL generates the main system clock and a phase-shifted SDRAM clock; the CPU and SDRAM use those clocks independently of video. The top-level generates a startup reset, instantiates the CPU and UART transmitter, and drives an active-low LED as a sticky debug indicator when the CPU result monitor observes the value 12.
 
 The `run.sh` script generates startup assembly and a linker script, compiles and links `software/main.c`, converts the program to the word-oriented `program.hex` memory image, calls `build.sh`, flashes the FPGA, and opens the serial terminal. The C compiler and assembler are prebuilt public tools; this project does not implement either tool. `build.sh` runs synthesis, place-and-route, bitstream packaging, and programming.
 
@@ -118,6 +145,14 @@ I wanted the CPU to do something more recognizable than turning an LED on or off
 I treated multiplication as the more straightforward operation. In the current RTL, the multiplier is described as a combinational multiplication operation, using Verilog's `*` operator, and selects the low or high half of the product according to the M-extension instruction. It can therefore use the ordinary execution/writeback path without a dedicated multi-cycle wait state.
 
 Division and remainder were much harder to implement. Instead of trying to express the entire operation as one large combinational calculation, I used an iterative shift/subtract approach that works over multiple cycles. The divider has its own control states and handshake signals, and I added `DIV_WAIT` to the CPU FSM so it can start the operation and wait until the divider reports that the result is ready. This is a functional design choice for the current implementation, not a claim that the combinational multiplier has no timing or area cost.
+
+### Why add external SDRAM?
+
+The low-level SDRAM controller was already available for the Tang Nano 20K with a working example. Rather than rewrite a timing-sensitive controller, I reused that established design and concentrated on the CPU-side interface: request buffering, address translation, byte/halfword/word access formatting, refresh scheduling, and CPU integration. This kept the scope focused on adding external memory to the CPU. The upstream source and open-source-toolchain fork are linked in the memory section above.
+
+### Why start with 480p video and RGB bars?
+
+I chose 480-line video as the first target because I thought **“I thought flappy bird with 480 be kinda sick.”** The three vertical RGB bars are intentionally simple: the first goal was to prove that all three TMDS color channels are being driven before attempting CPU-generated graphics or a framebuffer. The bars are a bring-up pattern, not a graphics architecture.
 
 ### Toolchain and external resources
 
