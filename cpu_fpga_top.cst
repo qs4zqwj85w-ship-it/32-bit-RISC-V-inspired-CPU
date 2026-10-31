@@ -128,22 +128,22 @@ IO_PORT "IO_sdram_dq[30]" IO_TYPE=LVCMOS33 BANK_VCCIO=3.3;
 IO_LOC "IO_sdram_dq[31]" IOR44B;
 IO_PORT "IO_sdram_dq[31]" IO_TYPE=LVCMOS33 BANK_VCCIO=3.3;
 
-
 # ============================================================
 # HDMI / DVI TMDS differential outputs
 # Tang Nano 20K — GW2AR-LV18QN88C8/I7
+# Verified against Sipeed schematic revision 3921
 # ============================================================
 
 # TMDS Clock
 IO_LOC  "hdmi_clk_p" 33;
-IO_LOC  "hdmi_clk_n" 37;
+IO_LOC  "hdmi_clk_n" 34;
 
 # TMDS Data Channel 0 (Blue)
-IO_LOC  "hdmi_data0_p" 34;
-IO_LOC  "hdmi_data0_n" 35;
+IO_LOC  "hdmi_data0_p" 35;
+IO_LOC  "hdmi_data0_n" 36;
 
 # TMDS Data Channel 1 (Green)
-IO_LOC  "hdmi_data1_p" 36;
+IO_LOC  "hdmi_data1_p" 37;
 IO_LOC  "hdmi_data1_n" 38;
 
 # TMDS Data Channel 2 (Red)
