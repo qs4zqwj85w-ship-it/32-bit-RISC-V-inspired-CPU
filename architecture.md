@@ -41,6 +41,7 @@ The control FSM has these states:
 - `MEMORY` and `MEMORY_WAIT`: handle load/store transactions and the synchronous memory-read timing.
 - `WRITEBACK`: writes the selected result to the destination register when the instruction requires it.
 - `DIV_WAIT`: waits for the iterative divider's completion signal.
+- `SDRAM_WAIT`: waits for an external SDRAM request to complete.
 - `TRAP`: routes a supported exception into the machine-mode trap path.
 
 Not every instruction uses every state. For example, an arithmetic instruction needs execution and writeback, while a load also needs a memory access. A division/remainder operation uses the divider's start/ready/done handshake and takes multiple calculation cycles.
