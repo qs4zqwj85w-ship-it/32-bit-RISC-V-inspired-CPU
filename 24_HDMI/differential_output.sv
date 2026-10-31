@@ -6,7 +6,7 @@ module differential_output (
 );
 
     // Differential output implementation goes here.
-ELVDS_OBUF instance_name (
+TLVDS_OBUF instance_name (
     .I  (signal_in),
     .O  (signal_p),
     .OB (signal_n)

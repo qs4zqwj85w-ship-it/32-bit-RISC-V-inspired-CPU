@@ -136,24 +136,16 @@ IO_PORT "IO_sdram_dq[31]" IO_TYPE=LVCMOS33 BANK_VCCIO=3.3;
 
 # TMDS Clock
 IO_LOC  "hdmi_clk_p" 33;
-IO_LOC  "hdmi_clk_n" 34;
-IO_PORT "hdmi_clk_p" IO_TYPE=LVCMOS33D PULL_MODE=NONE;
-IO_PORT "hdmi_clk_n" IO_TYPE=LVCMOS33D PULL_MODE=NONE;
+IO_LOC  "hdmi_clk_n" 37;
 
 # TMDS Data Channel 0 (Blue)
-IO_LOC  "hdmi_data0_p" 35;
-IO_LOC  "hdmi_data0_n" 36;
-IO_PORT "hdmi_data0_p" IO_TYPE=LVCMOS33D PULL_MODE=NONE;
-IO_PORT "hdmi_data0_n" IO_TYPE=LVCMOS33D PULL_MODE=NONE;
+IO_LOC  "hdmi_data0_p" 34;
+IO_LOC  "hdmi_data0_n" 35;
 
 # TMDS Data Channel 1 (Green)
-IO_LOC  "hdmi_data1_p" 37;
+IO_LOC  "hdmi_data1_p" 36;
 IO_LOC  "hdmi_data1_n" 38;
-IO_PORT "hdmi_data1_p" IO_TYPE=LVCMOS33D PULL_MODE=NONE;
-IO_PORT "hdmi_data1_n" IO_TYPE=LVCMOS33D PULL_MODE=NONE;
 
 # TMDS Data Channel 2 (Red)
 IO_LOC  "hdmi_data2_p" 39;
 IO_LOC  "hdmi_data2_n" 40;
-IO_PORT "hdmi_data2_p" IO_TYPE=LVCMOS33D PULL_MODE=NONE;
-IO_PORT "hdmi_data2_n" IO_TYPE=LVCMOS33D PULL_MODE=NONE;
