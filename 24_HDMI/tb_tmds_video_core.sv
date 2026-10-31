@@ -317,7 +317,6 @@ initial begin
     $display("Test 2: Initial video pixels");
 
     for (i = 0; i < 1000; i = i + 1) begin
-        @(negedge clk_pixel);
         check_pixel();
     end
 
@@ -326,7 +325,6 @@ initial begin
     $display("Test 3: Full 480p frame");
 
     for (i = 0; i < (858 * 525) - 1000; i = i + 1) begin
-        @(negedge clk_pixel);
         check_pixel();
     end
 
@@ -337,9 +335,8 @@ initial begin
     reset_dut();
 
     for (i = 0; i < 100; i = i + 1) begin
-        @(negedge clk_pixel);
         check_pixel();
-    end
+    end 
 
     // Results
 
