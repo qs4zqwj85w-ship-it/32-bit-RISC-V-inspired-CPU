@@ -261,6 +261,7 @@ module cpu_fpga_top (
     .rd_data (fb_line_rd_data)
     );
 
+    // Temporary configuration until framebuffer controller is implemented.
     assign fb_line_wr_en   = 1'b0;
     assign fb_line_wr_bank = 1'b0;
     assign fb_line_wr_addr = 9'b0;
