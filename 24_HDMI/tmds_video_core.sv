@@ -4,7 +4,7 @@ module tmds_video_core (
 
     output logic [9:0] tmds_red,
     output logic [9:0] tmds_green,
-    output logic [9:0] tmds_blue
+    output logic [9:0] tmds_blue,
 
     input  logic [7:0] line_buffer_data,
     input  logic       display_bank,
@@ -23,14 +23,22 @@ logic [7:0] green;
 logic [7:0] blue;
 
 video_core video_core_inst (
-    .clk_pixel   (clk_pixel),
-    .rst         (rst),
-    .hsync       (hsync),
-    .vsync       (vsync),
-    .red         (red),
-    .green       (green),
-    .blue        (blue),
-    .active_video(active_video)
+    .clk_pixel          (clk_pixel),
+    .rst                (rst),
+
+    .line_buffer_data   (line_buffer_data),
+    .display_bank       (display_bank),
+
+    .line_buffer_rd_en  (line_buffer_rd_en),
+    .line_buffer_bank   (line_buffer_bank),
+    .line_buffer_addr   (line_buffer_addr),
+
+    .hsync              (hsync),
+    .vsync              (vsync),
+    .red                (red),
+    .green              (green),
+    .blue               (blue),
+    .active_video       (active_video)
 );
 
 tmds_encoder tmds_red_encoder (

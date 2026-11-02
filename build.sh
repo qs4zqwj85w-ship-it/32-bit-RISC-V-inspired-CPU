@@ -44,7 +44,9 @@ FILES="$(printf '%s ' \
   '24_HDMI/tmds_encoder.sv' \
   '24_HDMI/tmds_video_core.sv' \
   '24_HDMI/serializer.sv' \
-  '24_HDMI/differential_output.sv' 
+  '24_HDMI/differential_output.sv' \
+  '25_framebuffer/framebuffer_line_buffer.sv' \
+  '25_framebuffer/framebuffer_scanout.sv' \
 )"
 
 echo "=== Synthesis ==="

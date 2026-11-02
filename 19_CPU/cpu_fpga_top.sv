@@ -65,14 +65,10 @@ module cpu_fpga_top (
         .busy    (uart_busy)
     );
 
-    // CPU core and external SDRAM pins
-    logic [31:0] cpu_result;
-
     
     // ============================================================
     // CPU and shared SDRAM subsystem
     // ============================================================
-
     logic [31:0] cpu_result;
 
     // CPU <-> SDRAM service
@@ -168,19 +164,6 @@ module cpu_fpga_top (
     // Keep video logic in reset until the HDMI PLL locks.
     assign hdmi_reset = !hdmi_pll_locked;
 
-    // TMDS-encoded video data
-    logic [9:0] tmds_red;
-    logic [9:0] tmds_green;
-    logic [9:0] tmds_blue;
-
-    tmds_video_core video_inst (
-        .clk_pixel  (clk_27m),
-        .rst        (hdmi_reset),
-        .tmds_red   (tmds_red),
-        .tmds_green (tmds_green),
-        .tmds_blue  (tmds_blue)
-    );
-
     wire serial_red;
     wire serial_green;
     wire serial_blue;
@@ -226,6 +209,27 @@ module cpu_fpga_top (
         .signal_n  (hdmi_clk_n)
     );
 
+    // TMDS-encoded video data
+    logic [9:0] tmds_red;
+    logic [9:0] tmds_green;
+    logic [9:0] tmds_blue;
+
+    tmds_video_core video_inst (
+    .clk_pixel (clk_27m),
+    .rst       (hdmi_reset),
+
+    .line_buffer_data (fb_line_rd_data),
+    .display_bank     (fb_display_bank),
+
+    .line_buffer_rd_en (fb_line_rd_en),
+    .line_buffer_bank  (fb_line_rd_bank),
+    .line_buffer_addr  (fb_line_rd_addr),
+
+    .tmds_red   (tmds_red),
+    .tmds_green (tmds_green),
+    .tmds_blue  (tmds_blue)
+    );
+
     // Framebuffer line-buffer interface
     logic       fb_line_wr_en;
     logic       fb_line_wr_bank;
@@ -264,21 +268,6 @@ module cpu_fpga_top (
 
     assign fb_display_bank = 1'b0;
 
-    tmds_video_core video_inst (
-    .clk_pixel (clk_27m),
-    .rst       (hdmi_reset),
-
-    .line_buffer_data (fb_line_rd_data),
-    .display_bank     (fb_display_bank),
-
-    .line_buffer_rd_en (fb_line_rd_en),
-    .line_buffer_bank  (fb_line_rd_bank),
-    .line_buffer_addr  (fb_line_rd_addr),
-
-    .tmds_red   (tmds_red),
-    .tmds_green (tmds_green),
-    .tmds_blue  (tmds_blue)
-    );
 
 
     // Sticky LED: lights once the CPU's result register has been 12.
