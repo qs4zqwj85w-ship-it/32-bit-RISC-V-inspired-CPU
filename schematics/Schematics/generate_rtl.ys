@@ -1,0 +1,42 @@
+# Load SDRAM controller
+read_verilog 23_SDRAM/sdram.v
+
+# Load CPU RTL and dependencies
+read_verilog -sv \
+    01_Register_File/register_file.sv \
+    19_CPU/CPU.sv \
+    06_memory/memory_subword.sv \
+    12_muxes_32/mux4_32.sv \
+    12_muxes_32/mux2_32.sv \
+    02_alu/alu.sv \
+    09_ALU_out_reg/alu_out_reg.sv \
+    16_memory_address_mux/memory_address_mux.sv \
+    15_next_pc_mux/next_pc_mux.sv \
+    03_imm_gen/imm_gen.sv \
+    08_MDR/mdr.sv \
+    17_memory_writeback_mux/memory_writeback_mux.sv \
+    14_alu_input_muxes/alu_input_muxes.sv \
+    05_PC/pc.sv \
+    04_decoder/decoder.sv \
+    11_op_AB_reg/op_AB_reg.sv \
+    07_instruction_register/instruction_reg.sv \
+    18_control_fsm/control_fsm.sv \
+    10_MAR/mar.sv \
+    13_branch_control/branch_control.sv \
+    21_CSR/machine_csrs.sv \
+    22_M_Extension/m_extension.sv \
+    22_M_Extension/m_division.sv \
+    23_SDRAM/sdram_adapter.sv
+
+# Select CPU as the top-level design
+hierarchy -check -top CPU
+
+# Convert behavioral RTL into internal logic representation
+proc
+opt
+
+# Generate hierarchical schematic
+show -format dot \
+     -prefix Documentation/Schematics/CPU_RTL \
+     -width \
+     CPU

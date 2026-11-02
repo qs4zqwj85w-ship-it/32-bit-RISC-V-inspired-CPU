@@ -1,0 +1,11 @@
+read_verilog -sv 02_alu/alu.sv
+
+hierarchy -check -top alu
+
+synth -top alu -flatten
+
+show -format dot \
+     -prefix Documentation/Schematics/ALU_Gates \
+     -viewer none \
+     -width \
+     alu
