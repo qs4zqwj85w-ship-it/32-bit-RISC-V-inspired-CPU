@@ -68,25 +68,85 @@ module cpu_fpga_top (
     // CPU core and external SDRAM pins
     logic [31:0] cpu_result;
 
+    
+    // ============================================================
+    // CPU and shared SDRAM subsystem
+    // ============================================================
+
+    logic [31:0] cpu_result;
+
+    // CPU <-> SDRAM service
+    logic        cpu_sdram_req;
+    logic        cpu_sdram_ready;
+    logic        cpu_sdram_we;
+    logic [22:0] cpu_sdram_addr;
+    logic [7:0]  cpu_sdram_wdata;
+    logic        cpu_sdram_done;
+    logic [31:0] cpu_sdram_rdata;
+
+    // Framebuffer <-> SDRAM service
+    // Temporarily disabled until framebuffer_reader is implemented.
+    logic        fb_sdram_ready;
+    logic        fb_sdram_done;
+    logic [31:0] fb_sdram_rdata;
+
+    // CPU instance
     CPU cpu_inst (
-        .clk          (clk_main),
-        .reset        (reset),
-        .result       (cpu_result),
-        .uart_wr_en   (cpu_uart_wr),
-        .uart_wr_data (cpu_uart_data),
-        .uart_busy    (uart_busy),
-        .clk_sdram    (clk_sdram),
-        .SDRAM_DQ     (IO_sdram_dq),
-        .SDRAM_A      (O_sdram_addr),
-        .SDRAM_BA     (O_sdram_ba),
-        .SDRAM_nCS    (O_sdram_cs_n),
-        .SDRAM_nWE    (O_sdram_wen_n),
-        .SDRAM_nRAS   (O_sdram_ras_n),
-        .SDRAM_nCAS   (O_sdram_cas_n),
-        .SDRAM_CLK    (O_sdram_clk),
-        .SDRAM_CKE    (O_sdram_cke),
-        .SDRAM_DQM    (O_sdram_dqm)
+        .clk              (clk_main),
+        .reset            (reset),
+        .result           (cpu_result),
+
+        .uart_wr_en       (cpu_uart_wr),
+        .uart_wr_data     (cpu_uart_data),
+        .uart_busy        (uart_busy),
+
+        .sdram_mem_req    (cpu_sdram_req),
+        .sdram_mem_ready  (cpu_sdram_ready),
+        .sdram_mem_we     (cpu_sdram_we),
+        .sdram_mem_addr   (cpu_sdram_addr),
+        .sdram_mem_wdata  (cpu_sdram_wdata),
+        .sdram_mem_done   (cpu_sdram_done),
+        .sdram_mem_rdata  (cpu_sdram_rdata)
     );
+
+    // Shared SDRAM service
+    sdram_service #(
+        .FREQ(27_000_000),
+        .REFRESH_INTERVAL_US(15)
+    ) sdram_service_inst (
+        .clk        (clk_main),
+        .clk_sdram  (clk_sdram),
+        .resetn     (~reset),
+
+        // CPU client
+        .cpu_req    (cpu_sdram_req),
+        .cpu_ready  (cpu_sdram_ready),
+        .cpu_we     (cpu_sdram_we),
+        .cpu_addr   (cpu_sdram_addr),
+        .cpu_wdata  (cpu_sdram_wdata),
+        .cpu_done   (cpu_sdram_done),
+        .cpu_rdata  (cpu_sdram_rdata),
+
+        // Framebuffer client (disabled for now)
+        .fb_req     (1'b0),
+        .fb_ready   (fb_sdram_ready),
+        .fb_addr    (23'b0),
+        .fb_done    (fb_sdram_done),
+        .fb_rdata   (fb_sdram_rdata),
+
+        // Physical SDRAM pins
+        .SDRAM_DQ   (IO_sdram_dq),
+        .SDRAM_A    (O_sdram_addr),
+        .SDRAM_BA   (O_sdram_ba),
+        .SDRAM_nCS  (O_sdram_cs_n),
+        .SDRAM_nWE  (O_sdram_wen_n),
+        .SDRAM_nRAS (O_sdram_ras_n),
+        .SDRAM_nCAS (O_sdram_cas_n),
+        .SDRAM_CLK  (O_sdram_clk),
+        .SDRAM_CKE  (O_sdram_cke),
+        .SDRAM_DQM  (O_sdram_dqm)
+    );
+
 
     // ============================================================
     // HDMI subsystem
