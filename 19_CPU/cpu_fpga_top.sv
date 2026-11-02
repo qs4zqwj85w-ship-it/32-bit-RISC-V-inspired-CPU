@@ -226,6 +226,61 @@ module cpu_fpga_top (
         .signal_n  (hdmi_clk_n)
     );
 
+    // Framebuffer line-buffer interface
+    logic       fb_line_wr_en;
+    logic       fb_line_wr_bank;
+    logic [8:0] fb_line_wr_addr;
+    logic [7:0] fb_line_wr_data;
+
+    logic       fb_line_rd_en;
+    logic       fb_line_rd_bank;
+    logic [8:0] fb_line_rd_addr;
+    logic [7:0] fb_line_rd_data;
+
+    logic       fb_display_bank;
+
+    framebuffer_line_buffer framebuffer_line_buffer_inst (
+    .wr_clk  (clk_main),
+    .rd_clk  (clk_27m),
+
+    .wr_rst  (reset),
+    .rd_rst  (hdmi_reset),
+
+    .wr_en   (fb_line_wr_en),
+    .wr_bank (fb_line_wr_bank),
+    .wr_addr (fb_line_wr_addr),
+    .wr_data (fb_line_wr_data),
+
+    .rd_en   (fb_line_rd_en),
+    .rd_bank (fb_line_rd_bank),
+    .rd_addr (fb_line_rd_addr),
+    .rd_data (fb_line_rd_data)
+    );
+
+    assign fb_line_wr_en   = 1'b0;
+    assign fb_line_wr_bank = 1'b0;
+    assign fb_line_wr_addr = 9'b0;
+    assign fb_line_wr_data = 8'b0;
+
+    assign fb_display_bank = 1'b0;
+
+    tmds_video_core video_inst (
+    .clk_pixel (clk_27m),
+    .rst       (hdmi_reset),
+
+    .line_buffer_data (fb_line_rd_data),
+    .display_bank     (fb_display_bank),
+
+    .line_buffer_rd_en (fb_line_rd_en),
+    .line_buffer_bank  (fb_line_rd_bank),
+    .line_buffer_addr  (fb_line_rd_addr),
+
+    .tmds_red   (tmds_red),
+    .tmds_green (tmds_green),
+    .tmds_blue  (tmds_blue)
+    );
+
+
     // Sticky LED: lights once the CPU's result register has been 12.
     logic result_seen = 1'b0;
 

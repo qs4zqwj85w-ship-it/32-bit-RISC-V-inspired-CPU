@@ -5,6 +5,13 @@ module tmds_video_core (
     output logic [9:0] tmds_red,
     output logic [9:0] tmds_green,
     output logic [9:0] tmds_blue
+
+    input  logic [7:0] line_buffer_data,
+    input  logic       display_bank,
+
+    output logic       line_buffer_rd_en,
+    output logic       line_buffer_bank,
+    output logic [8:0] line_buffer_addr
 );
 
 logic       hsync;
