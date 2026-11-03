@@ -1,8 +1,5 @@
 
-module cpu_fpga_top #(
-    // Framebuffer starts at byte offset 0x00100000 in physical SDRAM.
-    parameter logic [22:0] FB_BASE_ADDR = 23'h100000
-) (
+module cpu_fpga_top (
     input  logic clk_27m,
     output logic led0_n,
     output logic uart_tx,
@@ -99,6 +96,23 @@ module cpu_fpga_top #(
     logic        fb_sdram_done;
     logic [31:0] fb_sdram_rdata;
 
+    // CPU <-> Video configuration interface
+    logic [31:0] cpu_video_fb_base;
+    logic        cpu_video_enable;
+
+    // Validated, translated framebuffer address
+    logic        fb_base_valid;
+    logic [22:0] fb_base_addr;
+
+    // CPU-visible SDRAM starts at 0x00001000.
+    // Framebuffer controller uses physical SDRAM byte offsets.
+    assign fb_base_valid =
+        (cpu_video_fb_base >= 32'h0000_1000) &&
+        (cpu_video_fb_base <= 32'h007E_BE80) &&
+        (cpu_video_fb_base[1:0] == 2'b00);
+
+    assign fb_base_addr = cpu_video_fb_base[22:0] - 23'h001000;
+
 
     // ============================================================
     // 4. FRAMEBUFFER LINE-BUFFER INTERFACE
@@ -145,7 +159,10 @@ module cpu_fpga_top #(
         .sdram_mem_addr   (cpu_sdram_addr),
         .sdram_mem_wdata  (cpu_sdram_wdata),
         .sdram_mem_done   (cpu_sdram_done),
-        .sdram_mem_rdata  (cpu_sdram_rdata)
+        .sdram_mem_rdata  (cpu_sdram_rdata),
+        .video_fb_base      (cpu_video_fb_base),
+        .video_enable       (cpu_video_enable),
+        .video_display_valid(fb_display_valid)
     );
 
 
@@ -154,12 +171,16 @@ module cpu_fpga_top #(
     // ============================================================
 
     framebuffer_controller #(
-        .FB_BASE_ADDR  (FB_BASE_ADDR),
-        .LINE_BYTES    (360),
-        .WORDS_PER_LINE(90)
+        .LINE_BYTES     (360),
+        .WORDS_PER_LINE (90)
     ) framebuffer_controller_inst (
         .clk          (clk_main),
         .rst          (reset),
+
+        // Runtime video configuration from CPU
+        .video_enable (cpu_video_enable),
+        .fb_base_valid(fb_base_valid),
+        .fb_base_addr (fb_base_addr),
 
         // SDRAM service interface
         .fb_req       (fb_sdram_req),
