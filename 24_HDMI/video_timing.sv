@@ -6,7 +6,8 @@ module video_timing (
     output logic [9:0]  pixel_y,
     output logic        hsync,
     output logic        vsync,
-    output logic        active_video
+    output logic        active_video,
+    output logic vblank
 );
 
 logic [9:0] x_counter;
@@ -14,6 +15,7 @@ logic [9:0] y_counter;
 
 assign pixel_x = x_counter;
 assign pixel_y = y_counter;
+assign vblank = (y_counter >= 480);
 
 // logic to go thru each and every pixel
 always_ff @(posedge clk_pixel) begin

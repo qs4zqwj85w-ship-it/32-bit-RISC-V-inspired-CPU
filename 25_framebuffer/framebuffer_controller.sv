@@ -1,3 +1,4 @@
+
 module framebuffer_controller #(
     parameter logic [22:0] FB_BASE_ADDR = 23'h000000,
     parameter integer LINE_BYTES = 360,
@@ -24,13 +25,12 @@ module framebuffer_controller #(
     output logic        display_bank,
     output logic        display_valid,
 
-    input logic        video_enable,
-    input logic        fb_base_valid,
-    input logic [22:0] fb_base_addr,
+    input  logic        video_enable,
+    input  logic        fb_base_valid,
+    input  logic [22:0] fb_base_addr,
 
-    // NEW: high while the monitor is in vertical blanking (pixel_y >= 480).
-    // Must already be synchronised into this module's clk domain.
-    input logic        vblank
+    // Vertical blanking, synchronized into clk domain
+    input  logic        vblank
 );
 
     // --------------------------------------------------------
@@ -52,29 +52,23 @@ module framebuffer_controller #(
     // Transaction tracking
     // --------------------------------------------------------
 
-    logic [6:0] word_index;       // 0-89
-    logic [1:0] byte_index;       // 0-3
+    logic [6:0] word_index;
+    logic [1:0] byte_index;
 
     logic [31:0] word_buffer;
 
     logic [8:0] framebuffer_row;
     logic [22:0] row_base_addr;
 
-    // Bank currently being filled.
     logic fill_bank;
-
-    // Indicates that all 360 bytes have been written.
     logic write_complete;
 
     logic read_complete_seen;
 
-    // NEW: frame alignment.
-    // The very first row must only be fetched once the monitor has entered
-    // vertical blanking. Then row 0 is ready in bank A before display line 0,
-    // and the first read_complete (end of display line 1) swaps to row 1 at
-    // exactly the right moment. Starting at a random moment instead leaves the
-    // row counter out of step with pixel_y, which shows up as a picture that is
-    // shifted down with its bottom rows wrapped to the top.
+    // --------------------------------------------------------
+    // Initial frame alignment
+    // --------------------------------------------------------
+
     logic vblank_d;
     logic armed;
 
@@ -82,8 +76,6 @@ module framebuffer_controller #(
     // Address generation
     // --------------------------------------------------------
 
-    // Each word contains four consecutive framebuffer bytes.
-    // SDRAM service addresses are byte addresses.
     always_comb begin
         fb_addr = row_base_addr + {word_index, 2'b00};
     end
@@ -125,20 +117,23 @@ module framebuffer_controller #(
 
         end else begin
 
-            // Default pulse outputs.
+            // Default pulse output.
             line_wr_en <= 1'b0;
+
             // Remember that the current display row has finished reading.
             if (display_valid && read_complete)
                 read_complete_seen <= 1'b1;
 
-            // NEW: arm on the start of the first vertical blanking period
-            // after video is enabled.
+            // Detect rising edge of vertical blanking.
             vblank_d <= vblank;
-            if (video_enable && fb_base_valid && vblank && !vblank_d)
+
+            if (video_enable &&
+                fb_base_valid &&
+                vblank &&
+                !vblank_d)
                 armed <= 1'b1;
 
-            // NEW: if video is switched off while idle, forget the old
-            // alignment so the next enable starts from row 0 at a frame boundary.
+            // Reset alignment when video is disabled while idle.
             if (!video_enable && state == IDLE) begin
                 armed              <= 1'b0;
                 display_valid      <= 1'b0;
@@ -153,10 +148,13 @@ module framebuffer_controller #(
                 // ------------------------------------------------
                 // Begin fetching a framebuffer word.
                 // ------------------------------------------------
+
                 IDLE: begin
-                    // NEW: the first row waits for 'armed'; later rows go
-                    // straight on (display_valid is already 1).
-                    if (video_enable && fb_base_valid && (display_valid || armed)) begin
+
+                    if (video_enable &&
+                        fb_base_valid &&
+                        (display_valid || armed)) begin
+
                         word_index <= 7'd0;
 
                         if (!display_valid)
@@ -164,15 +162,20 @@ module framebuffer_controller #(
                         else
                             fill_bank <= ~display_bank;
 
-                        row_base_addr <= fb_base_addr + framebuffer_row * LINE_BYTES;
+                        row_base_addr <=
+                            fb_base_addr +
+                            framebuffer_row * LINE_BYTES;
 
                         state <= REQUEST_WORD;
+
                     end
+
                 end
 
                 // ------------------------------------------------
                 // Assert request to SDRAM service.
                 // ------------------------------------------------
+
                 REQUEST_WORD: begin
 
                     fb_req <= 1'b1;
@@ -184,6 +187,7 @@ module framebuffer_controller #(
                 // ------------------------------------------------
                 // Hold request until accepted.
                 // ------------------------------------------------
+
                 WAIT_ACCEPT: begin
 
                     if (fb_ready) begin
@@ -199,6 +203,7 @@ module framebuffer_controller #(
                 // ------------------------------------------------
                 // Wait for returned 32-bit word.
                 // ------------------------------------------------
+
                 WAIT_DATA: begin
 
                     if (fb_done) begin
@@ -216,6 +221,7 @@ module framebuffer_controller #(
                 // ------------------------------------------------
                 // Write four bytes into the line buffer.
                 // ------------------------------------------------
+
                 WRITE_BYTES: begin
 
                     line_wr_en   <= 1'b1;
@@ -230,21 +236,29 @@ module framebuffer_controller #(
 
                     endcase
 
-                    line_wr_addr <= {word_index, 2'b00} + byte_index;
+                    line_wr_addr <=
+                        {word_index, 2'b00} + byte_index;
 
-                    if (byte_index == 2'd3 && word_index == 7'd89) begin
+                    if (byte_index == 2'd3 &&
+                        word_index == 7'd89) begin
+
                         byte_index     <= 2'd0;
                         word_index     <= 7'd0;
                         write_complete <= 1'b1;
                         state          <= WAIT_SWAP;
+
                     end
                     else if (byte_index == 2'd3) begin
+
                         byte_index <= 2'd0;
                         word_index <= word_index + 1'b1;
                         state <= REQUEST_WORD;
+
                     end
                     else begin
+
                         byte_index <= byte_index + 1'b1;
+
                     end
 
                 end
@@ -252,33 +266,40 @@ module framebuffer_controller #(
                 // ------------------------------------------------
                 // Wait until the current display buffer is free.
                 // ------------------------------------------------
+
                 WAIT_SWAP: begin
 
-                    // Startup: first row has been loaded into bank A.
+                    // Startup: first row loaded into bank A.
                     if (!display_valid && write_complete) begin
 
                         display_bank <= 1'b0;
                         display_valid <= 1'b1;
+
                         write_complete <= 1'b0;
                         read_complete_seen <= 1'b0;
 
-                        framebuffer_row <= framebuffer_row + 1'b1;
+                        framebuffer_row <=
+                            framebuffer_row + 1'b1;
 
                         state <= IDLE;
 
                     end
 
                     // Normal operation: both sides have finished.
-                    else if (display_valid && write_complete && read_complete_seen) begin
+                    else if (display_valid &&
+                             write_complete &&
+                             read_complete_seen) begin
 
                         display_bank <= ~display_bank;
+
                         write_complete <= 1'b0;
                         read_complete_seen <= 1'b0;
 
                         if (framebuffer_row == 9'd239)
                             framebuffer_row <= 9'd0;
                         else
-                            framebuffer_row <= framebuffer_row + 1'b1;
+                            framebuffer_row <=
+                                framebuffer_row + 1'b1;
 
                         state <= IDLE;
 
@@ -287,8 +308,10 @@ module framebuffer_controller #(
                 end
 
                 default: begin
+
                     state <= IDLE;
                     fb_req <= 1'b0;
+
                 end
 
             endcase

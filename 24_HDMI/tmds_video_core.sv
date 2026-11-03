@@ -15,6 +15,8 @@ module tmds_video_core (
 
     // Framebuffer row completion
     output logic       read_complete
+
+    output logic vblank
 );
 
     logic       hsync;
@@ -43,7 +45,9 @@ module tmds_video_core (
         .blue               (blue),
         .active_video       (active_video),
 
-        .read_complete      (read_complete)
+        .read_complete      (read_complete),
+        .vblank(vblank)
+
     );
 
     tmds_encoder tmds_red_encoder (

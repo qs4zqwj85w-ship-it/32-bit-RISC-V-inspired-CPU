@@ -180,7 +180,7 @@ static void draw_scene(uint32_t base, int s)
 }
 
 #ifndef HOST_SIM
-static void delay(void) { for (volatile uint32_t i = 0; i < 4000000u; i++) ; }
+static void delay(void) { for (volatile uint32_t i = 0; i < 1000000u; i++) ; }
 #endif
 
 int main(void)

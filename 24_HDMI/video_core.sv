@@ -20,6 +20,7 @@ module video_core (
 
     // Framebuffer row completion
     output logic       read_complete
+    output logic vblank
 );
 
     logic [9:0] pixel_x;
@@ -28,6 +29,9 @@ module video_core (
     logic       raw_hsync;
     logic       raw_vsync;
     logic       raw_active_video;
+    logic raw_vblank;
+
+    assign vblank = raw_vblank;
 
     // Original video timing generator.
     video_timing video_timing_inst (
@@ -37,9 +41,9 @@ module video_core (
         .pixel_y      (pixel_y),
         .hsync        (raw_hsync),
         .vsync        (raw_vsync),
-        .active_video (raw_active_video)
+        .active_video (raw_active_video),
+        .vblank       (raw_vblank)
     );
-
     // Framebuffer scanout.
     framebuffer_line_scanout framebuffer_line_scanout_inst (
         .clk_pixel          (clk_pixel),

@@ -104,6 +104,7 @@ module cpu_fpga_top (
     logic        fb_base_valid;
     logic [22:0] fb_base_addr;
 
+    logic fb_vblank;
     // CPU-visible SDRAM starts at 0x00001000.
     // Framebuffer controller uses physical SDRAM byte offsets.
     assign fb_base_valid =
@@ -300,7 +301,8 @@ module cpu_fpga_top (
         .tmds_blue  (tmds_blue),
 
         // Row-consumption completion pulse
-        .read_complete (fb_read_complete)
+        .read_complete (fb_read_complete),
+        .vblank(fb_vblank)
     );
 
 
@@ -325,7 +327,8 @@ module cpu_fpga_top (
         .rd_en   (fb_line_rd_en),
         .rd_bank (fb_line_rd_bank),
         .rd_addr (fb_line_rd_addr),
-        .rd_data (fb_line_rd_data)
+        .rd_data (fb_line_rd_data),
+        .vblank(fb_vblank)
     );
 
 

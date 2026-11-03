@@ -514,9 +514,9 @@ Disassembly of section .text:
 
 000007a8 <delay>:
  7a8:	ff010113          	addi	sp,sp,-16
- 7ac:	003d17b7          	lui	a5,0x3d1
+ 7ac:	000f47b7          	lui	a5,0xf4
  7b0:	00012623          	sw	zero,12(sp)
- 7b4:	8ff78793          	addi	a5,a5,-1793 # 3d08ff <__bss_end+0x3d00b3>
+ 7b4:	23f78793          	addi	a5,a5,575 # f423f <__bss_end+0xf39f3>
  7b8:	00c12703          	lw	a4,12(sp)
  7bc:	00e7f663          	bgeu	a5,a4,7c8 <delay+0x20>
  7c0:	01010113          	addi	sp,sp,16

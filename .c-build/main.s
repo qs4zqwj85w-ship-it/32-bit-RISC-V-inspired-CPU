@@ -511,9 +511,9 @@ draw_scene:
 	.type	delay, @function
 delay:
 	addi	sp,sp,-16
-	li	a5,4001792
+	li	a5,999424
 	sw	zero,12(sp)
-	addi	a5,a5,-1793
+	addi	a5,a5,575
 .L63:
 	lw	a4,12(sp)
 	bleu	a4,a5,.L64
