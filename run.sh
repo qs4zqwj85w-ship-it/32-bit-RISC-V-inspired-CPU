@@ -9,7 +9,7 @@ cd "$ROOT"
    source "$HOME/tools/oss-cad-suite/environment"
    set -u
 
-SRC="$ROOT/software/sdram_life_optimized_nopoll.c"
+SRC="$ROOT/software/hdmi_claude_multiplication_enabled_bear.c"
 OUT="$ROOT/.c-build"
 
 die() {
@@ -110,7 +110,7 @@ echo
 echo "=== 2/4: Compile C, assemble, and link for RV32I ==="
 
 riscv64-elf-gcc \
-    -march=rv32i_zicsr -mabi=ilp32 \
+    -march=rv32im_zicsr -mabi=ilp32 \
     -O0 -ffreestanding -fno-builtin \
     -fno-pic -fno-pie -msmall-data-limit=0 \
     -fno-asynchronous-unwind-tables -fno-unwind-tables \

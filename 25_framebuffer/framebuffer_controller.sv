@@ -1,4 +1,3 @@
-
 module framebuffer_controller #(
     parameter logic [22:0] FB_BASE_ADDR = 23'h000000,
     parameter integer LINE_BYTES = 360,
@@ -27,7 +26,11 @@ module framebuffer_controller #(
 
     input logic        video_enable,
     input logic        fb_base_valid,
-    input logic [22:0] fb_base_addr
+    input logic [22:0] fb_base_addr,
+
+    // NEW: high while the monitor is in vertical blanking (pixel_y >= 480).
+    // Must already be synchronised into this module's clk domain.
+    input logic        vblank
 );
 
     // --------------------------------------------------------
@@ -64,6 +67,16 @@ module framebuffer_controller #(
     logic write_complete;
 
     logic read_complete_seen;
+
+    // NEW: frame alignment.
+    // The very first row must only be fetched once the monitor has entered
+    // vertical blanking. Then row 0 is ready in bank A before display line 0,
+    // and the first read_complete (end of display line 1) swaps to row 1 at
+    // exactly the right moment. Starting at a random moment instead leaves the
+    // row counter out of step with pixel_y, which shows up as a picture that is
+    // shifted down with its bottom rows wrapped to the top.
+    logic vblank_d;
+    logic armed;
 
     // --------------------------------------------------------
     // Address generation
@@ -107,6 +120,9 @@ module framebuffer_controller #(
             display_valid <= 1'b0;
             read_complete_seen <= 1'b0;
 
+            vblank_d <= 1'b0;
+            armed <= 1'b0;
+
         end else begin
 
             // Default pulse outputs.
@@ -115,13 +131,32 @@ module framebuffer_controller #(
             if (display_valid && read_complete)
                 read_complete_seen <= 1'b1;
 
+            // NEW: arm on the start of the first vertical blanking period
+            // after video is enabled.
+            vblank_d <= vblank;
+            if (video_enable && fb_base_valid && vblank && !vblank_d)
+                armed <= 1'b1;
+
+            // NEW: if video is switched off while idle, forget the old
+            // alignment so the next enable starts from row 0 at a frame boundary.
+            if (!video_enable && state == IDLE) begin
+                armed              <= 1'b0;
+                display_valid      <= 1'b0;
+                display_bank       <= 1'b0;
+                framebuffer_row    <= 9'd0;
+                write_complete     <= 1'b0;
+                read_complete_seen <= 1'b0;
+            end
+
             case (state)
 
                 // ------------------------------------------------
                 // Begin fetching a framebuffer word.
                 // ------------------------------------------------
                 IDLE: begin
-                    if (video_enable && fb_base_valid) begin
+                    // NEW: the first row waits for 'armed'; later rows go
+                    // straight on (display_valid is already 1).
+                    if (video_enable && fb_base_valid && (display_valid || armed)) begin
                         word_index <= 7'd0;
 
                         if (!display_valid)
@@ -134,6 +169,7 @@ module framebuffer_controller #(
                         state <= REQUEST_WORD;
                     end
                 end
+
                 // ------------------------------------------------
                 // Assert request to SDRAM service.
                 // ------------------------------------------------
@@ -211,8 +247,6 @@ module framebuffer_controller #(
                         byte_index <= byte_index + 1'b1;
                     end
 
-
-
                 end
 
                 // ------------------------------------------------
@@ -263,4 +297,3 @@ module framebuffer_controller #(
     end
 
 endmodule
-
