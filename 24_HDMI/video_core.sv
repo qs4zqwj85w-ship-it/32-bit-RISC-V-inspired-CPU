@@ -1,4 +1,3 @@
-
 module video_core (
     input  logic       clk_pixel,
     input  logic       rst,
@@ -17,7 +16,10 @@ module video_core (
     output logic [7:0] red,
     output logic [7:0] green,
     output logic [7:0] blue,
-    output logic       active_video
+    output logic       active_video,
+
+    // Framebuffer row completion
+    output logic       read_complete
 );
 
     logic [9:0] pixel_x;
@@ -38,7 +40,7 @@ module video_core (
         .active_video (raw_active_video)
     );
 
-    // Framebuffer scanout replaces video_pattern.
+    // Framebuffer scanout.
     framebuffer_line_scanout framebuffer_line_scanout_inst (
         .clk_pixel          (clk_pixel),
         .rst                (rst),
@@ -57,7 +59,9 @@ module video_core (
         .pixel_valid        (active_video),
         .red                (red),
         .green              (green),
-        .blue               (blue)
+        .blue               (blue),
+
+        .read_complete      (read_complete)
     );
 
     // Align synchronization signals with scanout latency.
