@@ -19,7 +19,7 @@ module video_core (
     output logic       active_video,
 
     // Framebuffer row completion
-    output logic       read_complete
+    output logic       read_complete,
     output logic vblank
 );
 

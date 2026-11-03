@@ -14,7 +14,7 @@ module tmds_video_core (
     output logic [8:0] line_buffer_addr,
 
     // Framebuffer row completion
-    output logic       read_complete
+    output logic       read_complete,
 
     output logic vblank
 );
