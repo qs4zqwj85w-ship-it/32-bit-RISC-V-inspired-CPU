@@ -23,7 +23,11 @@ module framebuffer_controller #(
     // Display / buffer management
     input  logic        read_complete,
     output logic        display_bank,
-    output logic        display_valid
+    output logic        display_valid,
+
+    input logic        video_enable,
+    input logic        fb_base_valid,
+    input logic [22:0] fb_base_addr
 );
 
     // --------------------------------------------------------
@@ -117,18 +121,19 @@ module framebuffer_controller #(
                 // Begin fetching a framebuffer word.
                 // ------------------------------------------------
                 IDLE: begin
-                    word_index <= 7'd0;
+                    if (video_enable && fb_base_valid) begin
+                        word_index <= 7'd0;
 
-                    if (!display_valid)
-                        fill_bank <= 1'b0;
-                    else
-                        fill_bank <= ~display_bank;
+                        if (!display_valid)
+                            fill_bank <= 1'b0;
+                        else
+                            fill_bank <= ~display_bank;
 
-                    row_base_addr <= FB_BASE_ADDR + framebuffer_row * LINE_BYTES;
+                        row_base_addr <= fb_base_addr + framebuffer_row * LINE_BYTES;
 
-                    state <= REQUEST_WORD;
+                        state <= REQUEST_WORD;
+                    end
                 end
-
                 // ------------------------------------------------
                 // Assert request to SDRAM service.
                 // ------------------------------------------------
