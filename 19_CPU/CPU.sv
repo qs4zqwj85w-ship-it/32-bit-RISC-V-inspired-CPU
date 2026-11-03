@@ -18,7 +18,10 @@ module CPU #(
     output wire [22:0] sdram_mem_addr,
     output wire [7:0]  sdram_mem_wdata,
     input  wire        sdram_mem_done,
-    input  wire [31:0] sdram_mem_rdata
+    input  wire [31:0] sdram_mem_rdata,
+    output logic [31:0] video_fb_base,
+    output logic        video_enable,
+    input  logic        video_display_valid
 );
 
     // =====================================================
@@ -126,6 +129,10 @@ module CPU #(
     // ---- Memory-mapped I/O ----
     localparam logic [31:0] UART_DATA_ADDR = 32'h1000_0000;
     localparam logic [31:0] UART_STAT_ADDR = 32'h1000_0004;
+    // HDMI map
+    localparam logic [31:0] VIDEO_FB_BASE_ADDR = 32'h10000010;
+    localparam logic [31:0] VIDEO_CONTROL_ADDR = 32'h10000014;
+    localparam logic [31:0] VIDEO_STATUS_ADDR = 32'h10000018;
 
     logic        mmio_sel;
     logic [31:0] ram_read_data;
@@ -185,18 +192,50 @@ module CPU #(
     assign mmio_sel         = (memory_address[31:28] == 4'h1);
     assign bram_write_enable = mem_write_enable && !mmio_sel && !sdram_address_sel;
     assign bram_read_enable = mem_read_enable && !mmio_sel && !sdram_address_sel;
-    assign uart_wr_en       = mem_write_enable && (memory_address == UART_DATA_ADDR);
+    assign uart_wr_en = mem_write_enable && mmio_sel && (memory_address == UART_DATA_ADDR);
     assign uart_wr_data     = operand_b[7:0];
 
-    always_ff @(posedge clk)
-        if (mem_read_enable)
+    // HDMI output addree assign
+    logic video_fb_base_wr;
+    logic video_control_wr;
+    logic video_base_valid;
+    logic video_status_sel_q = 1'b0;
+    assign video_base_valid =
+    (video_fb_base >= 32'h0000_1000) &&
+    (video_fb_base <= 32'h007E_BE80) &&
+    (video_fb_base[1:0] == 2'b00);
+    assign video_fb_base_wr = mem_write_enable && mmio_sel && (memory_address == VIDEO_FB_BASE_ADDR);
+    assign video_control_wr = mem_write_enable && mmio_sel && (memory_address == VIDEO_CONTROL_ADDR);
+
+    always_ff @(posedge clk) begin
+        if (reset) begin
+            stat_sel_q <= 1'b0;
+            video_status_sel_q <= 1'b0;
+        end
+        else if (mem_read_enable) begin
             stat_sel_q <= (memory_address == UART_STAT_ADDR);
+            video_status_sel_q <= (memory_address == VIDEO_STATUS_ADDR);
+        end
+    end
 
     always_comb begin
         if (stat_sel_q)
             memory_read_data = {31'b0, uart_busy};
+
+        else if (video_status_sel_q)
+            memory_read_data = {
+                29'b0,
+                video_display_valid,
+                video_base_valid,
+                video_enable
+            };
+
+        else if (mmio_sel)
+            memory_read_data = 32'd0;
+
         else if (sdram_address_sel)
             memory_read_data = sdram_rdata;
+
         else
             memory_read_data = ram_read_data;
     end
@@ -736,10 +775,17 @@ module CPU #(
     assign csr_addr = instruction_out[31:20];
 
     always_ff @(posedge clk) begin
-        if (reset)
-            csr_old_value <= 32'd0;
-        else if (csr_execute && csr_addr_valid)
-            csr_old_value <= csr_read_data;
+        if (reset) begin
+            video_fb_base <= 32'd0;
+            video_enable  <= 1'b0;
+        end
+        else begin
+            if (video_fb_base_wr)
+                video_fb_base <= operand_b;
+
+            if (video_control_wr)
+                video_enable <= operand_b[0];
+        end
     end
 
 
