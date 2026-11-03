@@ -155,7 +155,7 @@ module cpu_fpga_top (
 
     // Generate 135 MHz serializer clock from the board's 27 MHz clock.
     gowin_hdmi_pll hdmi_pll_inst (
-        .clk_27m (clk_27m),
+        .clk_27m (clk_main),
         .reset   (1'b0),
         .clk_135m(clk_135m),
         .locked  (hdmi_pll_locked)
@@ -171,7 +171,7 @@ module cpu_fpga_top (
 
     // Serialize the three TMDS channels.
     tmds_serializer serializer_inst (
-        .clk_pixel    (clk_27m),
+        .clk_pixel    (clk_main),
         .clk_pixel_x5 (clk_135m),
         .rst          (hdmi_reset),
 
@@ -215,7 +215,7 @@ module cpu_fpga_top (
     logic [9:0] tmds_blue;
 
     tmds_video_core video_inst (
-    .clk_pixel (clk_27m),
+    .clk_pixel (clk_main),
     .rst       (hdmi_reset),
 
     .line_buffer_data (fb_line_rd_data),
@@ -245,7 +245,7 @@ module cpu_fpga_top (
 
     framebuffer_line_buffer framebuffer_line_buffer_inst (
     .wr_clk  (clk_main),
-    .rd_clk  (clk_27m),
+    .rd_clk  (clk_main),
 
     .wr_rst  (reset),
     .rd_rst  (hdmi_reset),
