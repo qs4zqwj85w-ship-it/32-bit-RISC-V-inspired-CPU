@@ -199,7 +199,8 @@ module cpu_fpga_top (
         // Display / buffer management
         .read_complete(fb_read_complete),
         .display_bank (fb_display_bank),
-        .display_valid(fb_display_valid)
+        .display_valid(fb_display_valid),
+        .vblank       (fb_vblank),
     );
 
 
@@ -327,8 +328,7 @@ module cpu_fpga_top (
         .rd_en   (fb_line_rd_en),
         .rd_bank (fb_line_rd_bank),
         .rd_addr (fb_line_rd_addr),
-        .rd_data (fb_line_rd_data),
-        .vblank(fb_vblank)
+        .rd_data (fb_line_rd_data)
     );
 
 
