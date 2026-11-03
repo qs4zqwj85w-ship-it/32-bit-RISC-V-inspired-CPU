@@ -155,7 +155,7 @@ module cpu_fpga_top (
 
     // Generate 135 MHz serializer clock from the board's 27 MHz clock.
     gowin_hdmi_pll hdmi_pll_inst (
-        .clk_27m (clk_main),
+        .clk_27m (clk_27m),
         .reset   (1'b0),
         .clk_135m(clk_135m),
         .locked  (hdmi_pll_locked)
