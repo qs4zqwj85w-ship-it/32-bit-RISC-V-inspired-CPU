@@ -14,7 +14,7 @@ The 24_HDMI/ directory implements a standalone 720×480 active-pixel test video 
 ## Pipeline
 
 1. video_timing.sv generates pixel coordinates, sync, and active-video timing.
-2. video_pattern.sv generates the RGB bars and outputs black during blanking.
+2. video_pattern.sv generates the RGB bars and outputs black during blanking. // This is no longer true as we moved on to connecting CPU output onto the SDRAM and now image pixels are stored in certain registers in the SDRAM and the HDMI output reads them
 3. video_core.sv combines timing and pattern generation.
 4. Three tmds_encoder.sv instances encode red, green, and blue into 10-bit TMDS symbols. The blue encoder also carries HSync/VSync control symbols during blanking.
 5. gowin_hdmi_pll.sv generates a nominal 135 MHz clock (5× 27 MHz) for the three Gowin OSER10 serializers in serializer.sv.
