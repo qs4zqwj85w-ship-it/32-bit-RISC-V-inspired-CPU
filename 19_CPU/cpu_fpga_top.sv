@@ -401,7 +401,7 @@ module cpu_fpga_top (
             result_seen <= 1'b1;
     end
 
-    assign led0_n = result_seen ? 1'b0 : 1'b1;
+    assign led0_n = ~button_pressed;
 
 
 

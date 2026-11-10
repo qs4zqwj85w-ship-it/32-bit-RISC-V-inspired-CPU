@@ -9,7 +9,7 @@ cd "$ROOT"
    source "$HOME/tools/oss-cad-suite/environment"
    set -u
 
-SRC="$ROOT/software/hdmi_claude_multiplication_enabled_bear.c"
+SRC="$ROOT/software/button_input_test.c"
 OUT="$ROOT/.c-build"
 
 die() {

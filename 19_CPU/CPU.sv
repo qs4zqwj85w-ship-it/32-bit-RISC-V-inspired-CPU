@@ -21,10 +21,10 @@ module CPU #(
     input  wire [31:0] sdram_mem_rdata,
     output logic [31:0] video_fb_base,
     output logic        video_enable,
-    input  logic        video_display_valid
+    input  logic        video_display_valid,
 
     //button
-    input logic gpio_input,
+    input logic gpio_input
 );
 
     // =====================================================

@@ -48,7 +48,7 @@ FILES="$(printf '%s ' \
   '25_framebuffer/framebuffer_controller.sv' \
   '25_framebuffer/framebuffer_line_buffer.sv' \
   '25_framebuffer/framebuffer_scanout.sv' \
-  '26_26_physical_pins/button_input.sv' \
+  '26_physical_pins/button_input.sv' \
 )"
 
 echo "=== Synthesis ==="

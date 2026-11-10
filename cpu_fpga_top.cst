@@ -149,3 +149,7 @@ IO_LOC  "hdmi_data1_n" 38;
 # TMDS Data Channel 2 (Red)
 IO_LOC  "hdmi_data2_p" 39;
 IO_LOC  "hdmi_data2_n" 40;
+
+# Physical button input
+IO_LOC  "button_n" 72;
+IO_PORT "button_n" IO_TYPE=LVCMOS33 PULL_MODE=UP;
