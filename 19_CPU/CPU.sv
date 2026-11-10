@@ -22,6 +22,9 @@ module CPU #(
     output logic [31:0] video_fb_base,
     output logic        video_enable,
     input  logic        video_display_valid
+
+    //button
+    input logic gpio_input,
 );
 
     // =====================================================
@@ -134,9 +137,13 @@ module CPU #(
     localparam logic [31:0] VIDEO_CONTROL_ADDR = 32'h10000014;
     localparam logic [31:0] VIDEO_STATUS_ADDR = 32'h10000018;
 
+    localparam logic [31:0] GPIO_INPUT_ADDR = 32'h1000001C;
+
     logic        mmio_sel;
     logic [31:0] ram_read_data;
     logic        stat_sel_q = 1'b0;
+    logic gpio_input_sel_q = 1'b0;
+    
 
     // CSR execution logic
     logic        is_csr;
@@ -211,10 +218,12 @@ module CPU #(
         if (reset) begin
             stat_sel_q <= 1'b0;
             video_status_sel_q <= 1'b0;
+            gpio_input_sel_q <= 1'b0;
         end
         else if (mem_read_enable) begin
             stat_sel_q <= (memory_address == UART_STAT_ADDR);
             video_status_sel_q <= (memory_address == VIDEO_STATUS_ADDR);
+            gpio_input_sel_q <= (memory_address == GPIO_INPUT_ADDR);
         end
     end
 
@@ -227,8 +236,10 @@ module CPU #(
                 29'b0,
                 video_display_valid,
                 video_base_valid,
-                video_enable
-            };
+                video_enable};
+
+        else if (gpio_input_sel_q)
+            memory_read_data = {31'b0, gpio_input};
 
         else if (mmio_sel)
             memory_read_data = 32'd0;

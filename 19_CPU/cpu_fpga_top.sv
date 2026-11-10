@@ -23,7 +23,11 @@ module cpu_fpga_top (
     output wire hdmi_data2_p,
     output wire hdmi_data2_n,
     output wire hdmi_clk_p,
-    output wire hdmi_clk_n
+    output wire hdmi_clk_n,
+
+    //Button
+
+    input logic button_n
 );
 
     // ============================================================
@@ -163,7 +167,9 @@ module cpu_fpga_top (
         .sdram_mem_rdata  (cpu_sdram_rdata),
         .video_fb_base      (cpu_video_fb_base),
         .video_enable       (cpu_video_enable),
-        .video_display_valid(fb_display_valid)
+        .video_display_valid(fb_display_valid),
+
+        .gpio_input(button_pressed)
     );
 
 
@@ -396,5 +402,22 @@ module cpu_fpga_top (
     end
 
     assign led0_n = result_seen ? 1'b0 : 1'b1;
+
+
+
+    // ============================================================
+    // 15. Physical Button
+    // ============================================================
+
+    logic button_pressed;
+
+    button_input #(
+        .DEBOUNCE_CYCLES(270_000)
+    ) button_inst (
+        .clk(clk_27m),
+        .reset(reset),
+        .button_n(button_n),
+        .button_pressed(button_pressed)
+    );
 
 endmodule
