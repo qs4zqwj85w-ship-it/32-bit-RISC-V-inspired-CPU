@@ -9,7 +9,7 @@ cd "$ROOT"
    source "$HOME/tools/oss-cad-suite/environment"
    set -u
 
-SRC="$ROOT/software/button_input_test.c"
+SRC="${SRC:-$ROOT/software/flappy_bird.c}"
 OUT="$ROOT/.c-build"
 
 die() {
@@ -17,7 +17,7 @@ die() {
     exit 1
 }
 
-[[ -f "$SRC" ]] || die "Missing software/main.c"
+[[ -f "$SRC" ]] || die "Missing C source: $SRC"
 [[ -f "$ROOT/build.sh" ]] || die "Missing build.sh"
 
 # Check required tools before starting.
